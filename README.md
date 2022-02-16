@@ -20,7 +20,7 @@ Clone the project:
 
 Then, use CMake to configure and build it:
 
-    cmake .. -DCMAKE_BUILD_TYPE=Release
+    cmake .. -DSC_PATH=path/to/supercollider -DCMAKE_PREFIX_PATH="path/to/libtorch;/usr/local" -DCMAKE_BUILD_TYPE=Release
     cmake --build . --config Release
     cmake --build . --config Release --target install
 
@@ -36,3 +36,9 @@ Use the command in `regenerate` to update CMakeLists.txt when you add or remove 
 project. You don't need to run it if you only change the contents of existing files. You may need to
 edit the command if you add, remove, or rename plugins, to match the new plugin paths. Run the
 script with `--help` to see all available options.
+
+### Acknowledgements
+
+Antoine Caillon's RAVE autoencoder: https://github.com/caillonantoine/RAVE
+
+Andrew Fyfe and Bogdan Teleaga's RAVE-audition JUCE plugins: https://github.com/Fyfe93/RAVE-audition

@@ -61,6 +61,8 @@ if (NOVA_SIMD)
 	include_directories(${SC_PATH}/external_libraries/nova-simd)
 endif()
 
+find_package(Torch REQUIRED) # find torch
+
 ####################################################################################################
 # Begin target RAVE
 
@@ -81,6 +83,7 @@ sc_add_server_plugin(
     "${RAVE_cpp_files}"
     "${RAVE_sc_files}"
     "${RAVE_schelp_files}"
+    "${TORCH_LIBRARIES}" # shared libraries
 )
 
 # End target RAVE
