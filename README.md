@@ -1,4 +1,4 @@
-# RAVE
+# RAVE for SuperCollider
 
 Author: Victor Shepardson
 
@@ -36,6 +36,13 @@ Use the command in `regenerate` to update CMakeLists.txt when you add or remove 
 project. You don't need to run it if you only change the contents of existing files. You may need to
 edit the command if you add, remove, or rename plugins, to match the new plugin paths. Run the
 script with `--help` to see all available options.
+
+### Caveats
+
+- must use sample rate 48000 and block size 2048
+- model loading interface is WIP
+- not a well behaved UGen. all kinds of memory allocation on the audio thread.
+- prior not yet implemented
 
 ### Acknowledgements
 
