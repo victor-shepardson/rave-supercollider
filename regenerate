@@ -1,0 +1,1 @@
+python /Users/victor/supercollider/supercollider/tools/cmake_gen/generate_server_plugin_cmake.py -P "RAVE" -p "plugins/RAVE" -a "Victor Shepardson"

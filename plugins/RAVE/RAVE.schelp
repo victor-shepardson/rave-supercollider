@@ -1,0 +1,26 @@
+class:: RAVE
+summary:: SuperCollider plugin for RAVE autoencoder
+related:: TODO
+categories:: UGens>TODO
+
+description::
+
+SuperCollider plugin for RAVE autoencoder
+
+
+classmethods::
+
+method::ar, kr
+
+argument::TODO
+
+argument::TODO
+
+
+examples::
+
+code::
+
+{ RAVE.ar(/* TODO */) }.play
+
+::
