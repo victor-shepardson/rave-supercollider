@@ -8,6 +8,9 @@ SuperCollider plugin for RAVE autoencoder
 
 - CMake >= 3.5
 - SuperCollider source code
+- libtorch distribution
+
+tested on macOS 10.14.6
 
 ### Building
 
