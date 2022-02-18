@@ -28,8 +28,8 @@ Then, use CMake to configure and build it:
     ln -s /path/to/rave-supercollider /path/to/sc/extensions/
     <!-- cmake --build . --config Release --target install -->
 
-You may want to manually specify the install location in the first step to point it at your
-SuperCollider extensions directory: add the option `-DCMAKE_INSTALL_PREFIX=/path/to/extensions`.
+<!-- You may want to manually specify the install location in the first step to point it at your -->
+<!-- SuperCollider extensions directory: add the option `-DCMAKE_INSTALL_PREFIX=/path/to/extensions`. -->
 
 It's expected that the SuperCollider repo is cloned at `../supercollider` relative to this repo. If
 it's not: add the option `-DSC_PATH=/path/to/sc/source`.
@@ -44,7 +44,6 @@ script with `--help` to see all available options.
 ### Caveats
 
 - must use sample rate 48000 and block size 2048
-- model loading interface is WIP
 - not a well behaved UGen. all kinds of memory allocation on the audio thread.
 - prior not yet implemented
 
