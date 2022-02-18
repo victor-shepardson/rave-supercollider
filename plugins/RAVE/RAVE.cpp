@@ -9,10 +9,8 @@ static InterfaceTable* ft;
 namespace RAVE {
 
 void load_model(struct Unit* unit, struct sc_msg_iter* args){
-    std::cerr << "hello" <<std::endl;
     auto rave = (RAVE*)unit;
     const char *path = args->gets();
-    std::cerr << path <<std::endl;
     rave->model.load(path);
 }
 
@@ -73,5 +71,4 @@ PluginLoad(RAVEUGens) {
     ft = inTable;
     registerUnit<RAVE::RAVE>(ft, "RAVE", false);
     DefineUnitCmd("RAVE", "/load", RAVE::load_model);
-
 }

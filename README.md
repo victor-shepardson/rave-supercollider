@@ -25,7 +25,8 @@ Then, use CMake to configure and build it:
 
     cmake .. -DSC_PATH=path/to/supercollider -DCMAKE_PREFIX_PATH="path/to/libtorch;/usr/local" -DCMAKE_BUILD_TYPE=Release
     cmake --build . --config Release
-    cmake --build . --config Release --target install
+    ln -s /path/to/rave-supercollider /path/to/sc/extensions/
+    <!-- cmake --build . --config Release --target install -->
 
 You may want to manually specify the install location in the first step to point it at your
 SuperCollider extensions directory: add the option `-DCMAKE_INSTALL_PREFIX=/path/to/extensions`.
