@@ -8,7 +8,6 @@
 #pragma once
 
 // note: preprocessor wants torch included first
-// #include <torch/torch.h>
 #include <torch/script.h>
 
 #include "SC_PlugIn.hpp"

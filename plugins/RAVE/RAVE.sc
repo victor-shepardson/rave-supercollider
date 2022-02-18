@@ -1,6 +1,6 @@
 RAVE : UGen {
-	*ar { |control, input, gain|
-		var inst = this.multiNew('audio', input, gain);
+	*ar { |control, input, usePrior, temperature|
+		var inst = this.multiNew('audio', input, usePrior, temperature);
 		// the RAVEControl needs to know UGen index  in the synth to send
 		// the load command later
 		control.ugenID = inst.synthIndex;

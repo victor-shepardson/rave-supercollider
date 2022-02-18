@@ -44,8 +44,8 @@ script with `--help` to see all available options.
 ### Caveats
 
 - must use sample rate 48000 and block size 2048
-- not a well behaved UGen. all kinds of memory allocation on the audio thread.
-- prior not yet implemented
+- expensive, not a well behaved UGen. all kinds of memory allocation on the audio thread.
+- model loading is done synchronously and will glitch the audio
 
 ### Acknowledgements
 

@@ -31,10 +31,11 @@ RAVE::~RAVE() {
 
 void RAVE::next(int nSamples) {
     const float* input = in(0);
+    const float use_prior = in0(1);
+    const float temperature = in0(2);
 
     float* outbuf = out(0);
 
-    // simple gain function
     for (int i = 0; i < nSamples; ++i) {
         if (!model.loaded) {
             outbuf[i] = 0;
@@ -46,8 +47,12 @@ void RAVE::next(int nSamples) {
         if(bufPtr == INPUT_SIZE){
             //process block
             at::Tensor frame = torch::from_blob(inBuffer, INPUT_SIZE);
-            frame = torch::reshape(frame, {1,1,INPUT_SIZE});
-            result = model.encode_decode(frame);
+            if(use_prior){
+                result = model.sample_from_prior(temperature);
+            } else {
+                frame = torch::reshape(frame, {1,1,INPUT_SIZE});
+                result = model.encode_decode(frame);
+            }
             resultData = result.data_ptr<float>();
 
             bufPtr = 0;

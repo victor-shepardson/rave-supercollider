@@ -13,14 +13,20 @@ s.boot;
 
 (
 //use a RAVEControl object to manage model loading
-~ctl = RAVEControl(s, modelFile:"/Users/victor/speech_realtime.ts");
+//fill in the location of realtime RAVE model
+~ctl = RAVEControl(s,
+    //fill in the location of realtime RAVE model
+    modelFile:"/Users/victor/speech_realtime.ts"
+);
 ~synth = {
 
     var out = Limiter.ar(
         RAVE.ar(
-            ~ctl, // first argument is a RAVEControl
-            SoundIn.ar(0), //encoder input
-            DC.ar(1)) // temperature
+            ~ctl, //a RAVEControl
+            SoundIn.ar(0),// input for timbre transfer
+            \prior.kr(0), // 0 for timbre transfer, 1 for generation
+            \temp.kr(1) // temperature of generation
+        )
     );
     out!2;
 
@@ -30,7 +36,11 @@ s.boot;
 )
 
 // run this once the synth has been created on the server
-// load model and start the RAVE UGen
+// to load model and start the RAVE UGen
 ~ctl.load(~synth);
+
+~synth.set(\prior, 1);
+
+~synth.set(\temp, 0);
 
 s.quit
