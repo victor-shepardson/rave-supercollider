@@ -74,11 +74,11 @@ set(RAVE_sc_files
     plugins/RAVE/RAVE.sc
 )
 set(RAVE_schelp_files
-    plugins/RAVE/RAVE.schelp
+    HelpSource/Classes/RAVE.schelp
 )
 
 sc_add_server_plugin(
-    "RAVE/RAVE" # desination directory
+    "RAVE" # destination directory
     "RAVE" # target name
     "${RAVE_cpp_files}"
     "${RAVE_sc_files}"

@@ -8,9 +8,11 @@ SuperCollider plugin for RAVE autoencoder
 
 - CMake >= 3.5
 - SuperCollider source code
-- libtorch distribution
+- libtorch distribution C++ from pytorch.org
 
-tested on macOS 10.14.6
+scsynth plugin tested on macOS 10.14.6
+
+supernova plugin untested
 
 ### Building
 
@@ -26,13 +28,17 @@ Then, use CMake to configure and build it:
     cmake .. -DSC_PATH=path/to/supercollider -DCMAKE_PREFIX_PATH="path/to/libtorch;/usr/local" -DCMAKE_BUILD_TYPE=Release
     cmake --build . --config Release
     ln -s /path/to/rave-supercollider /path/to/sc/extensions/
-    <!-- cmake --build . --config Release --target install -->
-
+    
+<!-- cmake --build . --config Release --target install -->
 <!-- You may want to manually specify the install location in the first step to point it at your -->
 <!-- SuperCollider extensions directory: add the option `-DCMAKE_INSTALL_PREFIX=/path/to/extensions`. -->
 
 It's expected that the SuperCollider repo is cloned at `../supercollider` relative to this repo. If
 it's not: add the option `-DSC_PATH=/path/to/sc/source`.
+
+### Usage
+
+see `schelp` file or `examples/test.scd`. You need a realtime RAVE model in a torchscript file, not provided here.
 
 ### Developing
 
