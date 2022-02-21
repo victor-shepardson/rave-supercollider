@@ -2,7 +2,7 @@
 
 Author: Victor Shepardson
 
-SuperCollider plugin for RAVE autoencoder
+RAVE autoencoder plugin for SuperCollider.
 
 ### Requirements
 
