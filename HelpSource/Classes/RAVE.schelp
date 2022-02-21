@@ -1,0 +1,81 @@
+class:: RAVE
+summary:: SuperCollider plugin for RAVE autoencoder
+related:: Classes/RAVEControl
+categories:: UGens>Wrappers
+
+description::
+RAVE autoencoder plugin for SuperCollider.
+
+note::
+must use server hardwareBufferSize=2048 for good performance.
+::
+
+note::
+must use sampleRate=48000 for correct pitch.
+::
+
+note::
+RAVEControl.load will glitch the audio so call it ahead of time.
+::
+
+method::ar
+
+argument::control
+a RAVEControl
+
+argument::input
+audio input for encoder-decoder mode (prior=0)
+
+argument::prior
+control rate. if greater than zero, sample from prior instead of transforming input.
+
+argument::temperature
+temperature (typically 0-1) when sampling prior; ignored when prior=0.
+
+examples::
+
+code::
+(
+s.options.sampleRate = 48000;
+s.options.blockSize = 2048;
+s.options.hardwareBufferSize = 2048;
+s.boot;
+~bus = Bus.new(index:0, numChannels:1);
+)
+
+// if there are code signing problems:
+("xattr -d -r com.apple.quarantine"+Platform.userExtensionDir.quote++"/rave-supercollider/").runInTerminal
+
+(
+// SuperCollider makes it impossible to pass a filename directly to a UGen constructor,
+// so we use a RAVEControl object to manage model loading.
+// to address a RAVE instance, it needs:
+//   the server, nodeID of the synth, and index of the RAVE instance within the synth;
+//   and for the RAVE to have been created on the server.
+~ctl = RAVEControl(s, //server acquired here
+    //torchscript file containing a realtime RAVE model
+    modelFile:"/path/to/rave_realtime.ts"
+); 
+~synth = {
+
+    var out = Limiter.ar(
+        RAVE.ar(
+            ~ctl, //a RAVEControl: index of UGen in the synth acquired here
+            SoundIn.ar(0), // input for timbre transfer
+            \prior.kr(0), // 0 for timbre transfer, 1 for generation
+            \temp.kr(1) // temperature of generation
+        )
+    );
+    out!2;
+
+}.play(outbus:~bus);
+)
+
+// run this once the synth has been created on the server
+// to load model and start the RAVE UGen
+~ctl.load(~synth); //nodeID of synth acquired here
+
+~synth.set(\prior, 1);
+
+~synth.set(\temp, 0);
+::
