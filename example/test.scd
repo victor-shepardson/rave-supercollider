@@ -4,19 +4,25 @@ Server.default.options.outDevice_("Built-in Output");
 s.options.sampleRate = 48000;
 s.options.blockSize = 2048;
 s.options.hardwareBufferSize = 2048;
-s.boot;
-~bus = Bus.new(index:0, numChannels:1);
+s.waitForBoot{
+	~bus = Bus.new(index:0, numChannels:1);
+}
 )
 
 // if there are code signing problems:
 ("xattr -d -r com.apple.quarantine"+Platform.userExtensionDir.quote++"/rave-supercollider/").runInTerminal
+
+
+// some checkpoints:
+// https://play.forum.ircam.fr/rave-vst-api/get_available_models
+// https://play.forum.ircam.fr/rave-vst-api/get_model?model_name=
 
 (
 //use a RAVEControl object to manage model loading
 //fill in the location of realtime RAVE model
 ~ctl = RAVEControl(s,
     //fill in the location of realtime RAVE model
-    modelFile:"/Users/victor/speech_realtime.ts"
+    modelFile:"/Users/victor/rave-models/speech/speech-realtime.ts"
 );
 ~synth = {
 
@@ -39,7 +45,7 @@ s.boot;
 // to load model and start the RAVE UGen
 ~ctl.load(~synth);
 
-~synth.set(\prior, 1);
+~synth.set(\prior, 0);
 
 ~synth.set(\temp, 0);
 

@@ -57,10 +57,11 @@ struct RAVEModel {
         return;
     }
 
-    this->sr = 48000;
-    this->decode_explosion = 2048;
-    this->z_per_second = (int)48000/2048;
-    this->prior_temp_size = 512;
+    //
+    // this->sr = 48000;
+    // this->decode_explosion = 2048; 
+    // this->z_per_second = (int)48000/2048;
+    // this->prior_temp_size = 512;
 
     auto named_buffers = this->model.named_buffers();
     for (auto const& i: named_buffers) {
@@ -71,6 +72,7 @@ struct RAVEModel {
         if (i.name == "_rave.decode_params") {
             std::cout<<i.name<<std::endl;
             std::cout << i.value << std::endl;
+            // why is this named `explosion`? appears to be the block size
             this->decode_explosion = i.value[1].item<int>();
         }
         if (i.name == "_rave.sampling_rate") {
@@ -83,8 +85,9 @@ struct RAVEModel {
             std::cout << i.value.sizes()[1] << std::endl;
             this->prior_temp_size = (int) i.value.sizes()[1];
         }
-
     } 
+    this->z_per_second = this->sr / this->decode_explosion;
+
     c10::InferenceMode guard;
     inputs_rave.clear();
     inputs_rave.push_back(torch::ones({1,1,decode_explosion}));
@@ -112,6 +115,24 @@ struct RAVEModel {
 
     return y.squeeze(0); // remove batch dim
 
+  }
+
+  torch::Tensor encode (torch::Tensor input) {
+    c10::InferenceMode guard;
+
+    inputs_rave[0] = input;
+    const auto z = this->model.get_method("encode")(inputs_rave).toTensor();
+
+    return z.squeeze(0); // remove batch dim
+  }
+
+  torch::Tensor decode (torch::Tensor latent) {
+    c10::InferenceMode guard;
+
+    inputs_rave[0] = latent;
+    const auto y = this->model.get_method("decode")(inputs_rave).toTensor();
+
+    return y.squeeze(0); // remove batch dim
   }
 
 };
