@@ -14,16 +14,19 @@
 
 namespace RAVE {
 
+// TODO: don't hardcode these
+const int LATENT_SIZE = 8;
 const int INPUT_SIZE = 2048;
 
 struct RAVEModel {
-  
+
   torch::jit::Module model;
 
   int sr;
   int decode_explosion;
   int z_per_second;
   int prior_temp_size;
+  int latent_size;
   bool loaded;
     
   std::vector<torch::jit::IValue> inputs_rave;
@@ -68,12 +71,15 @@ struct RAVEModel {
         if (i.name == "_rave.latent_size") {
             std::cout<<i.name<<std::endl;
             std::cout << i.value << std::endl;
+            // this -> latent_size = i.value.item<int>();
         }
         if (i.name == "_rave.decode_params") {
             std::cout<<i.name<<std::endl;
             std::cout << i.value << std::endl;
             // why is this named `explosion`? appears to be the block size
             this->decode_explosion = i.value[1].item<int>();
+            this->latent_size = i.value[0].item<int>();
+
         }
         if (i.name == "_rave.sampling_rate") {
             std::cout<<i.name<<std::endl;
@@ -140,22 +146,35 @@ struct RAVEModel {
 //unit command for passing in a model string
 void load_model(struct Unit* unit, struct sc_msg_iter* args);
 
-class RAVE : public SCUnit {
+class RAVEBase : public SCUnit {
 
 public:
-    RAVE();
-    ~RAVE();
+    RAVEBase();
+    ~RAVEBase();
 
     RAVEModel model;
 
-private:
     float * inBuffer;
     size_t bufPtr;
     at::Tensor result;
     float * resultData;
-    bool first_block;
+    bool first_block_done;
 
-    // Calc function
+};
+
+class RAVE : public RAVEBase {
+  public:
+    RAVE();
+    void next(int nSamples);
+};
+class RAVEEncoder : public RAVEBase {
+  public:
+    RAVEEncoder();
+    void next(int nSamples);
+};
+class RAVEDecoder : public RAVEBase {
+  public:
+    RAVEDecoder();
     void next(int nSamples);
 };
 
