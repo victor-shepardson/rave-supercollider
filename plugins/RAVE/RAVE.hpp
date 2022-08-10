@@ -23,7 +23,7 @@ struct RAVEModel {
   torch::jit::Module model;
 
   int sr;
-  int decode_explosion;
+  int block_size;
   int z_per_second;
   int prior_temp_size;
   int latent_size;
@@ -49,25 +49,22 @@ struct RAVEModel {
     }
     
   void load(const std::string& rave_model_file) {
+    std::cout << "\"" <<rave_model_file << "\"" <<std::endl;
     try {
         c10::InferenceMode guard;
         this->model = torch::jit::load(rave_model_file);
     }
     catch (const c10::Error& e) {
+      // why no error when filename is bad?
         std::cerr << e.what();
         std::cerr << e.msg();
         std::cerr << "error loading the model\n";
         return;
     }
 
-    //
-    // this->sr = 48000;
-    // this->decode_explosion = 2048; 
-    // this->z_per_second = (int)48000/2048;
-    // this->prior_temp_size = 512;
-
     auto named_buffers = this->model.named_buffers();
     for (auto const& i: named_buffers) {
+        // std::cout<<i.name<<std::endl;
         if (i.name == "_rave.latent_size") {
             std::cout<<i.name<<std::endl;
             std::cout << i.value << std::endl;
@@ -77,9 +74,8 @@ struct RAVEModel {
             std::cout<<i.name<<std::endl;
             std::cout << i.value << std::endl;
             // why is this named `explosion`? appears to be the block size
-            this->decode_explosion = i.value[1].item<int>();
+            this->block_size = i.value[1].item<int>();
             this->latent_size = i.value[0].item<int>();
-
         }
         if (i.name == "_rave.sampling_rate") {
             std::cout<<i.name<<std::endl;
@@ -92,11 +88,11 @@ struct RAVEModel {
             this->prior_temp_size = (int) i.value.sizes()[1];
         }
     } 
-    this->z_per_second = this->sr / this->decode_explosion;
+    this->z_per_second = this->sr / this->block_size;
 
     c10::InferenceMode guard;
     inputs_rave.clear();
-    inputs_rave.push_back(torch::ones({1,1,decode_explosion}));
+    inputs_rave.push_back(torch::ones({1,1,block_size}));
 
     this->loaded = true;
   }
@@ -143,22 +139,22 @@ struct RAVEModel {
 
 };
 
-//unit command for passing in a model string
-void load_model(struct Unit* unit, struct sc_msg_iter* args);
-
 class RAVEBase : public SCUnit {
 
 public:
     RAVEBase();
     ~RAVEBase();
 
-    RAVEModel model;
+    static RAVEModel model;
+    // static bool model_created;
 
     float * inBuffer;
     size_t bufPtr;
     at::Tensor result;
     float * resultData;
     bool first_block_done;
+    size_t filename_length;
+    size_t ugen_inputs;
 
 };
 

@@ -18,17 +18,11 @@ s.waitForBoot{
 // https://play.forum.ircam.fr/rave-vst-api/get_model?model_name=
 
 (
-//use a RAVEControl object to manage model loading
-//fill in the location of realtime RAVE model
-~ctl = RAVEControl(s,
-    //fill in the location of realtime RAVE model
-    modelFile:"/Users/victor/rave-models/speech/speech_realtime.ts"
-);
 ~synth = {
 
     var out = Limiter.ar(
         RAVE.new(
-            ~ctl, //a RAVEControl
+			"/Users/victor/rave-models/speech/speech_realtime.ts",
             SoundIn.ar(0),// input for timbre transfer
             \prior.kr(0), // 0 for timbre transfer, 1 for generation
             \temp.kr(1) // temperature of generation
@@ -44,19 +38,11 @@ s.waitForBoot{
 
 
 (
-//use a RAVEControl object to manage model loading
-//fill in the location of realtime RAVE model
-~ctl = RAVEControl(s,
-    //fill in the location of realtime RAVE model
-    modelFile:"/Users/victor/rave-models/speech/speech_realtime.ts"
-);
 ~synth = {
 
 	var z = RAVEEncoder.new(
-		~ctl, //a RAVEControl
+		"/Users/victor/rave-models/speech/speech_realtime.ts",
 		SoundIn.ar(0),// input for latent embedding
-		\prior.kr(0), // 0 for embedding, 1 for generation
-		\temp.kr(1) // temperature of generation
 	);
 	z.poll(2);
 	DC.ar(0)!2;
@@ -71,12 +57,6 @@ s.waitForBoot{
 )
 
 (
-//use a RAVEControl object to manage model loading
-//fill in the location of realtime RAVE model
-~ctl = RAVEControl(s,
-    //fill in the location of realtime RAVE model
-    modelFile:"/Users/victor/rave-models/speech/speech_realtime.ts"
-);
 ~synth = {
 
 	// var z = SinOsc.kr(8.collect{ |i| 1.5**(0-i) * 1});
@@ -84,7 +64,7 @@ s.waitForBoot{
 	// var z = [0,0,0,0,0,0,0,SinOsc.kr(0.5)*3];
 	Limiter.ar(
         RAVEDecoder.new(
-            ~ctl, //a RAVEControl
+            "/Users/victor/rave-models/speech/speech_realtime.ts",
             z,// latent inputs
         )
     )!2;
@@ -108,6 +88,7 @@ m = 0.1;
 )
 
 
+~synth.free
 
 // run this once the synth has been created on the server
 // to load model and start the RAVE UGen

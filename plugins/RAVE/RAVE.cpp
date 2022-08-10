@@ -8,32 +8,45 @@ static InterfaceTable* ft;
 
 namespace RAVE {
 
-void load_model(struct Unit* unit, struct sc_msg_iter* args){
-    auto rave = (RAVEBase*)unit;
-    const char *path = args->gets();
-    rave->model.load(path);
-}
+RAVEModel RAVEBase::model = RAVEModel();
 
 RAVEBase::RAVEBase() {
-    model = RAVEModel();
-
     bufPtr = 0;
     first_block_done = false;
+
+    filename_length = in0(0);
+    std::cout<<filename_length<<std::endl;
+    char path[filename_length];
+    for (int i=0; i<filename_length; i++){
+        path[i] = static_cast<char>(in0(i+1));
+    }
+    std::cout<< "loading: " << path << std::endl;
+    model.load(path);
 }
 
+// TODO: how to avoid the hardcoded values here?
 RAVE::RAVE() : RAVEBase(){
     inBuffer = (float*)RTAlloc(this->mWorld, INPUT_SIZE * sizeof(float));
     mCalcFunc = make_calc_function<RAVE, &RAVE::next>();
 }
+
 RAVEEncoder::RAVEEncoder() : RAVEBase(){
     inBuffer = (float*)RTAlloc(this->mWorld, INPUT_SIZE * sizeof(float));
     mCalcFunc = make_calc_function<RAVEEncoder, &RAVEEncoder::next>();
     // next(INPUT_SIZE);
 }
+
 RAVEDecoder::RAVEDecoder() : RAVEBase(){
     inBuffer = (float*)RTAlloc(this->mWorld, LATENT_SIZE * sizeof(float));
     mCalcFunc = make_calc_function<RAVEDecoder, &RAVEDecoder::next>();
     // next(INPUT_SIZE);
+
+    // filename len, *chars, inputs len, *inputs
+    ugen_inputs = in0(filename_length+1);
+
+    std::cout << 
+        "model latent size: " << model.latent_size << 
+        "; found " << ugen_inputs << " inputs" << std::endl;
 }
 
 RAVEBase::~RAVEBase() {
@@ -41,9 +54,9 @@ RAVEBase::~RAVEBase() {
 }
 
 void RAVE::next(int nSamples) {
-    const float* input = in(0);
-    const float use_prior = in0(1);
-    const float temperature = in0(2);
+    const float* input = in(filename_length+1);
+    const float use_prior = in0(filename_length+2);
+    const float temperature = in0(filename_length+3);
 
     float* outbuf = out(0);
 
@@ -57,11 +70,11 @@ void RAVE::next(int nSamples) {
         bufPtr++;
         if(bufPtr == INPUT_SIZE){
             //process block
-            at::Tensor frame = torch::from_blob(inBuffer, INPUT_SIZE);
+            at::Tensor frame = torch::from_blob(inBuffer, model.block_size);
             if(use_prior){
                 result = model.sample_from_prior(temperature);
             } else {
-                frame = torch::reshape(frame, {1,1,INPUT_SIZE});
+                frame = torch::reshape(frame, {1,1,model.block_size});
                 result = model.encode_decode(frame);
             }
             resultData = result.data_ptr<float>();
@@ -81,9 +94,7 @@ void RAVE::next(int nSamples) {
 }
 
 void RAVEEncoder::next(int nSamples) {
-    const float* input = in(0);
-    const float use_prior = in0(1);
-    const float temperature = in0(2);
+    const float* input = in(filename_length+1);
 
     // should write zeros here but don't know how many outputs before model is loaded
     // leaving this since we want to change how model loading works anyway...
@@ -95,19 +106,14 @@ void RAVEEncoder::next(int nSamples) {
         bufPtr++;
         if(bufPtr == INPUT_SIZE){
             //process block
-            at::Tensor frame = torch::from_blob(inBuffer, INPUT_SIZE);
-            if(use_prior){
-                result = model.sample_from_prior(temperature);
-            } else {
-                frame = torch::reshape(frame, {1,1,INPUT_SIZE});
-                result = model.encode(frame);
-            }
+            at::Tensor frame = torch::from_blob(inBuffer, model.block_size);
+            frame = torch::reshape(frame, {1,1,model.block_size});
+            result = model.encode(frame);
             resultData = result.data_ptr<float>();
 
             bufPtr = 0;
             first_block_done = true;
         }
-
     }
 
     // write results to N kr outputs once per block
@@ -135,7 +141,7 @@ void RAVEDecoder::next(int nSamples) {
         bufPtr++;
         if(bufPtr == INPUT_SIZE){
             for (int j=0; j < model.latent_size; j++){
-                inBuffer[j] = in0(j);
+                inBuffer[j] = in0(j + filename_length + 2);
             }
             //process block
             at::Tensor frame = torch::from_blob(inBuffer, model.latent_size);
@@ -163,9 +169,6 @@ PluginLoad(RAVEUGens) {
     // Plugin magic
     ft = inTable;
     registerUnit<RAVE::RAVE>(ft, "RAVE", false);
-    DefineUnitCmd("RAVE", "/load", RAVE::load_model);
     registerUnit<RAVE::RAVEEncoder>(ft, "RAVEEncoder", false);
-    DefineUnitCmd("RAVEEncoder", "/load", RAVE::load_model);
     registerUnit<RAVE::RAVEDecoder>(ft, "RAVEDecoder", false);
-    DefineUnitCmd("RAVEDecoder", "/load", RAVE::load_model);
 }
