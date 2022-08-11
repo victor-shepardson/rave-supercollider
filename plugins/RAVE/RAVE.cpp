@@ -8,7 +8,9 @@ static InterfaceTable* ft;
 
 namespace RAVE {
 
-RAVEModel RAVEBase::model = RAVEModel();
+// RAVEModel RAVEBase::model = RAVEModel();
+
+auto RAVEBase::models = std::map<std::string, RAVEModel>();
 
 RAVEBase::RAVEBase() {
     bufPtr = 0;
@@ -16,12 +18,22 @@ RAVEBase::RAVEBase() {
 
     filename_length = in0(0);
     std::cout<<filename_length<<std::endl;
-    char path[filename_length];
+    // char path[filename_length];
+    auto path = std::string(filename_length, '!');
     for (int i=0; i<filename_length; i++){
         path[i] = static_cast<char>(in0(i+1));
     }
-    std::cout<< "loading: " << path << std::endl;
-    model.load(path);
+
+    auto kv = models.find(path);
+    if (kv==models.end()){
+        model = RAVEModel();
+        std::cout << "loading: \"" << path << "\"" << std::endl;
+        model.load(path);
+        models.insert({path, model});
+    } else {
+        model = kv->second;
+        std::cout << "found \"" << path << "\" already loaded" << std::endl;
+    }
 }
 
 // TODO: how to avoid the hardcoded values here?

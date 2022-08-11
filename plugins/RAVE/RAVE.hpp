@@ -49,7 +49,7 @@ struct RAVEModel {
     }
     
   void load(const std::string& rave_model_file) {
-    std::cout << "\"" <<rave_model_file << "\"" <<std::endl;
+    // std::cout << "\"" <<rave_model_file << "\"" <<std::endl;
     try {
         c10::InferenceMode guard;
         this->model = torch::jit::load(rave_model_file);
@@ -62,22 +62,25 @@ struct RAVEModel {
         return;
     }
 
+
+    this->block_size = this->latent_size = this->sr = this->prior_temp_size = -1;
+
     auto named_buffers = this->model.named_buffers();
     for (auto const& i: named_buffers) {
-        // std::cout<<i.name<<std::endl;
-        if (i.name == "_rave.latent_size") {
+        std::cout<<i.name<<std::endl;
+        if ((i.name == "_rave.latent_size") || (i.name == "latent_size")) {
             std::cout<<i.name<<std::endl;
             std::cout << i.value << std::endl;
             // this -> latent_size = i.value.item<int>();
         }
-        if (i.name == "_rave.decode_params") {
+        if ((i.name == "_rave.decode_params") || (i.name == "decode_params")) {
             std::cout<<i.name<<std::endl;
             std::cout << i.value << std::endl;
             // why is this named `explosion`? appears to be the block size
             this->block_size = i.value[1].item<int>();
             this->latent_size = i.value[0].item<int>();
         }
-        if (i.name == "_rave.sampling_rate") {
+        if ((i.name == "_rave.sampling_rate") || (i.name == "sampling_rate")) {
             std::cout<<i.name<<std::endl;
             std::cout << i.value << std::endl;
             this->sr = i.value.item<int>();
@@ -89,6 +92,16 @@ struct RAVEModel {
         }
     } 
     this->z_per_second = this->sr / this->block_size;
+
+    if ((this->block_size<0) || 
+        (this->latent_size<0) || 
+        (this->sr<0)){
+      std::cout << "model load failed" << std::endl;
+      return;
+    }
+    if (this->prior_temp_size<0){
+      std::cout << "warning: this model has no prior" << std::endl;
+    }
 
     c10::InferenceMode guard;
     inputs_rave.clear();
@@ -145,7 +158,10 @@ public:
     RAVEBase();
     ~RAVEBase();
 
-    static RAVEModel model;
+    // static RAVEModel model;
+
+    RAVEModel model;
+    static std::map<std::string, RAVEModel> models;
     // static bool model_created;
 
     float * inBuffer;

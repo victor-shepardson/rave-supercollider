@@ -1,4 +1,6 @@
 (
+// Server.default.options.inDevice_("BlackHole 16ch");
+// Server.default.options.outDevice_("BlackHole 16ch");
 Server.default.options.inDevice_("Built-in Microph");
 Server.default.options.outDevice_("Built-in Output");
 s.options.sampleRate = 48000;
@@ -8,6 +10,8 @@ s.waitForBoot{
 	~bus = Bus.new(index:0, numChannels:1);
 }
 )
+
+s.quit
 
 // if there are code signing problems:
 ("xattr -d -r com.apple.quarantine"+Platform.userExtensionDir.quote++"/rave-supercollider/").runInTerminal
@@ -64,12 +68,19 @@ s.waitForBoot{
 	// var z = [0,0,0,0,0,0,0,SinOsc.kr(0.5)*3];
 	Limiter.ar(
         RAVEDecoder.new(
-            "/Users/victor/rave-models/speech/speech_realtime.ts",
+			// "/Users/victor/rave-models/speech/speech_realtime.ts",
+			// "/Users/victor/rave-models/speech/speech_realtime💋.ts",
+			// "/Users/victor/rave-models/wheel/wheel.ts",
+
+			// "/Users/victor/rave-models/animal2rt_3M_sc.ts",
+			// "/Users/victor/rave-models/blonk/blonk_vae_only_sc.ts",
+			"/Users/victor/rave-models/blonk/blonk_2300865_sc.ts",
             z,// latent inputs
         )
     )!2;
 }.play(outbus:~bus);
 
+~set = { |key, fn| ~synth.set(key, Ndef(key, fn))};
 )
 
 
@@ -77,16 +88,15 @@ s.waitForBoot{
 r = 48000/2048;
 b = 0;
 m = 0.1;
-~synth.set(\latent_7, Ndef(\l7, {SinOsc.kr(r/3)*2}));
-~synth.set(\latent_6, Ndef(\l6, {SinOsc.kr(r/4)*2}));
-~synth.set(\latent_5, Ndef(\l5, {SinOsc.kr(r/5)*2}));
-~synth.set(\latent_4, Ndef(\l4, {SinOsc.kr(r/7)*2}));
-~synth.set(\latent_3, Ndef(\l3, {SinOsc.kr(r/6)*2}));
-~synth.set(\latent_2, Ndef(\l2, {SinOsc.kr(r/5)*2}));
-~synth.set(\latent_1, Ndef(\l1, {SinOsc.kr(r/4)*2}));
-~synth.set(\latent_0, Ndef(\l0, {SinOsc.kr(r/3)*2}));
+~set.(\latent_0, {SinOsc.kr(r/3)*2});
+~set.(\latent_1, {SinOsc.kr(r/4)*2});
+~set.(\latent_2, {SinOsc.kr(r/5)*2});
+~set.(\latent_3, {SinOsc.kr(r/6)*2});
+~set.(\latent_4, {SinOsc.kr(r/7)*2});
+~set.(\latent_5, {SinOsc.kr(r/6)*2});
+~set.(\latent_6, {SinOsc.kr(r/5)*2});
+~set.(\latent_7, {SinOsc.kr(r/4)*2});
 )
-
 
 ~synth.free
 
