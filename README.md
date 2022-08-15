@@ -1,8 +1,6 @@
 # RAVE for SuperCollider
 
-Author: Victor Shepardson
-
-RAVE autoencoder plugin for SuperCollider.
+RAVE autoencoder UGens for SuperCollider.
 
 ### Requirements
 
@@ -31,7 +29,7 @@ Then, use CMake to configure and build it:
 
 Note for arm64 macs: supercollider and libtorch architecture need to match. Building and running with Rosetta is possible but native performance is much better.
 
-`path/to/supercollider` is the checked out SuperCollider source from https://github.com/supercollider/supercollider at the same commit as the version you are running -- see the version number and `git checkout` that tag. At the time of writing you need to build SC from source for native build on arm64 Mac.
+`path/to/supercollider` is the checked out SuperCollider source from https://github.com/supercollider/supercollider at the same commit as the version you are running -- see the version number and `git checkout` that tag. At the time of writing you need to build SC from source for native build on arm64 mac.
 
 `/path/to/libtorch` is the downloaded libtorch from https://pytorch.org/get-started/locally/ . At time of writing this only distributes the x86_64 version for Mac. But you can install pytorch for arm64 via conda, and then point to that; in my case it was `/Users/victor/mambaforge/pkgs/pytorch-1.12.0-py3.9_0/lib/python3.9/site-packages/torch`.
 
@@ -40,7 +38,7 @@ it's not: add the option `-DSC_PATH=/path/to/sc/source`.
 
 ### Usage
 
-see `schelp` file or `examples/test.scd`. You need a realtime RAVE model in a torchscript file, not provided here.
+see the `.schelp` files or `examples/test.scd`. You need a realtime RAVE model in a torchscript file, not provided here.
 
 ### Developing
 
@@ -51,9 +49,9 @@ script with `--help` to see all available options.
 
 ### Caveats
 
-- must use sample rate 48000 and block size 2048
+- must use sample rate 48000 and hardware block size 2048
 - expensive, not a well behaved UGen. all kinds of memory allocation on the audio thread.
-- model loading is done synchronously and will glitch the audio
+- model loading is done synchronously and can glitch the audio the first time each model is loaded
 
 ### Acknowledgements
 
