@@ -3,11 +3,14 @@
 // Server.default.options.outDevice_("BlackHole 16ch");
 Server.default.options.inDevice_("Built-in Microph");
 Server.default.options.outDevice_("Built-in Output");
-s.options.sampleRate = 48000;
-s.options.blockSize = 2048;
-s.options.hardwareBufferSize = 2048;
+
+s.options.sampleRate = 48000; // the sample rate must match RAVE
+s.options.blockSize = 512;//16; // a low block size within scsynth is fine,
+s.options.hardwareBufferSize = 2048; // but the hardware buffer size needs to match RAVE
+// (to avoid dropouts)
+
 s.waitForBoot{
-	~bus = Bus.new(index:0, numChannels:1);
+	~bus = Bus.new(index:0, numChannels:2);
 }
 )
 
@@ -21,6 +24,8 @@ s.quit
 // https://play.forum.ircam.fr/rave-vst-api/get_available_models
 // https://play.forum.ircam.fr/rave-vst-api/get_model?model_name=
 
+
+// old API:
 (
 ~synth = {
 
@@ -38,28 +43,61 @@ s.quit
 
 // ~bus.scope.window.bounds = Rect(0,1050,740,550);
 )
+~synth.set(\prior, 1);
+~synth.set(\temp, 0);
 
-
-
+// separate encoder/decoder
+// RAVEEncoder needs the latent size as an argument, since it needs to create that many
+// control rate outputs.
+// RAVEDecoder can handle a mismatched input size
+// (extra inputs are ignored, extra latent dimensions are zeroed)
 (
 ~synth = {
-
 	var z = RAVEEncoder.new(
-		"/Users/victor/rave-models/speech/speech_realtime.ts",
+		// "/Users/victor/rave-models/animal2rt_3M_sc.ts", 4,
+		"/Users/victor/rave-models/speech/speech_realtime.ts", 8, // filename, latent size
 		SoundIn.ar(0),// input for latent embedding
 	);
-	z.poll(2);
-	DC.ar(0)!2;
-	/*Limiter.ar(
-        RAVEDecoder.new(
-            ~ctl, //a RAVEControl
-            z,// latent inputs
-        )
-    )!2;*/
+	z.poll(2,);
+	// DC.ar(0)!2;
+	Limiter.ar(
+		RAVEDecoder.new(
+			// "/Users/victor/rave-models/animal2rt_3M_sc.ts",
+			"/Users/victor/rave-models/speech/speech_realtime.ts",
+			z
+			// 0-z.shift(1) // latent inputs
+		)
+	)!2;
 }.play(outbus:~bus);
 
 )
 
+
+// separate prior/decoder
+// RAVEPrior needs the latent size as an argument, since it needs to create that many
+// control rate outputs.
+// RAVEDecoder can handle a mismatched input size
+// (extra inputs are ignored, extra latent dimensions are zeroed)
+(
+~synth = {
+	var z = RAVEPrior.new(
+		"/Users/victor/rave-models/speech/speech_realtime.ts", 8, // filename, latent size
+		DC.kr(0.7), // prior temperature
+	);
+	z.poll(2);
+	// DC.ar(0)!2;
+	Limiter.ar(
+        RAVEDecoder.new(
+			// "/Users/victor/rave-models/speech/speech_realtime.ts",
+			"/Users/victor/rave-models/cleansing/2M46_cleansing_small_sc.ts",
+			z))!2 // latent inputs
+	// [z, z+z.collect{PinkNoise.kr*2-1/3}])) // pseudo-stereo
+    ;
+}.play(outbus:~bus);
+
+)
+
+//decoder only
 (
 ~synth = {
 
@@ -68,13 +106,12 @@ s.quit
 	// var z = [0,0,0,0,0,0,0,SinOsc.kr(0.5)*3];
 	Limiter.ar(
         RAVEDecoder.new(
-			// "/Users/victor/rave-models/speech/speech_realtime.ts",
-			// "/Users/victor/rave-models/speech/speech_realtime💋.ts",
+			"/Users/victor/rave-models/speech/speech_realtime.ts",
+			// "/Users/victor/rave-models/speech/speech_realtime💋.ts", //test unicode
 			// "/Users/victor/rave-models/wheel/wheel.ts",
-
 			// "/Users/victor/rave-models/animal2rt_3M_sc.ts",
 			// "/Users/victor/rave-models/blonk/blonk_vae_only_sc.ts",
-			"/Users/victor/rave-models/blonk/blonk_2300865_sc.ts",
+			// "/Users/victor/rave-models/blonk/blonk_2300865_sc.ts",
             z,// latent inputs
         )
     )!2;
@@ -88,24 +125,16 @@ s.quit
 r = 48000/2048;
 b = 0;
 m = 0.1;
-~set.(\latent_0, {SinOsc.kr(r/3)*2});
-~set.(\latent_1, {SinOsc.kr(r/4)*2});
-~set.(\latent_2, {SinOsc.kr(r/5)*2});
-~set.(\latent_3, {SinOsc.kr(r/6)*2});
-~set.(\latent_4, {SinOsc.kr(r/7)*2});
-~set.(\latent_5, {SinOsc.kr(r/6)*2});
-~set.(\latent_6, {SinOsc.kr(r/5)*2});
-~set.(\latent_7, {SinOsc.kr(r/4)*2});
+~set.(\latent_0, {SinOsc.kr(r/4)*2});
+~set.(\latent_1, {SinOsc.kr(r/3)*2});
+~set.(\latent_2, {SinOsc.kr(r/7)*2});
+~set.(\latent_3, {SinOsc.kr(r/7)*2});
+~set.(\latent_4, {SinOsc.kr(r/11)*2});
+~set.(\latent_5, {SinOsc.kr(r/13)*2});
+~set.(\latent_6, {SinOsc.kr(r/17)*2});
+~set.(\latent_7, {SinOsc.kr(r/19)*2});
 )
 
 ~synth.free
-
-// run this once the synth has been created on the server
-// to load model and start the RAVE UGen
-~ctl.load(~synth);
-
-~synth.set(\prior, 1);
-
-~synth.set(\temp, 0);
 
 s.quit

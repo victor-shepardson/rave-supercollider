@@ -14,10 +14,7 @@
 
 namespace RAVE {
 
-// TODO: don't hardcode these
-const int LATENT_SIZE = 8;
-const int INPUT_SIZE = 2048;
-
+// RAVEModel encapsulates the libtorch parts
 struct RAVEModel {
 
   torch::jit::Module model;
@@ -62,31 +59,30 @@ struct RAVEModel {
         return;
     }
 
-
     this->block_size = this->latent_size = this->sr = this->prior_temp_size = -1;
 
     auto named_buffers = this->model.named_buffers();
     for (auto const& i: named_buffers) {
-        std::cout<<i.name<<std::endl;
-        if ((i.name == "_rave.latent_size") || (i.name == "latent_size")) {
-            std::cout<<i.name<<std::endl;
-            std::cout << i.value << std::endl;
-            // this -> latent_size = i.value.item<int>();
-        }
+        // std::cout<<i.name<<std::endl;
+        
+        // if ((i.name == "_rave.latent_size") || (i.name == "latent_size")) {
+        //     std::cout<<i.name<<std::endl;
+        //     std::cout << i.value << std::endl;
+        //     this -> latent_size = i.value.item<int>();
+        // }
         if ((i.name == "_rave.decode_params") || (i.name == "decode_params")) {
-            std::cout<<i.name<<std::endl;
-            std::cout << i.value << std::endl;
-            // why is this named `explosion`? appears to be the block size
+            // std::cout<<i.name<<std::endl;
+            // std::cout << i.value << std::endl;
             this->block_size = i.value[1].item<int>();
             this->latent_size = i.value[0].item<int>();
         }
         if ((i.name == "_rave.sampling_rate") || (i.name == "sampling_rate")) {
-            std::cout<<i.name<<std::endl;
-            std::cout << i.value << std::endl;
+            // std::cout<<i.name<<std::endl;
+            // std::cout << i.value << std::endl;
             this->sr = i.value.item<int>();
         }
         if (i.name == "_prior.previous_step") {
-            std::cout<<i.name<<std::endl;
+            // std::cout<<i.name<<std::endl;
             std::cout << i.value.sizes()[1] << std::endl;
             this->prior_temp_size = (int) i.value.sizes()[1];
         }
@@ -100,8 +96,13 @@ struct RAVEModel {
       return;
     }
     if (this->prior_temp_size<0){
-      std::cout << "warning: this model has no prior" << std::endl;
+      std::cout << "warning: RAVE model in " << rave_model_file << " has no prior;" << std::endl;
+      std::cout << "\tRAVEPrior and RAVE with prior>0 will not function." << std::endl;
     }
+
+    std::cout << "\tblock size: " << this->block_size << std::endl;
+    std::cout << "\tlatent size: " << this->latent_size << std::endl;
+    std::cout << "\tsample rate: " << this->sr << std::endl;
 
     c10::InferenceMode guard;
     inputs_rave.clear();
@@ -109,65 +110,103 @@ struct RAVEModel {
 
     this->loaded = true;
   }
-  
-  torch::Tensor sample_from_prior (const float temperature) {
+
+
+  void prior_decode (const float temperature, float* outBuffer) {
     c10::InferenceMode guard;
 
-    inputs_rave[0] = torch::ones({1,1,1}) * temperature;
-    const auto prior = this->model.get_method("prior")(inputs_rave).toTensor();
+    inputs_rave[0] = torch::ones({1, 1, 1}) * temperature;
+    const auto prior = this->model.get_method("prior")(
+      inputs_rave).toTensor();
 
     inputs_rave[0] = prior;
-    const auto y = this->model.get_method("decode")(inputs_rave).toTensor();
+    const auto y = this->model.get_method("decode")(
+      inputs_rave).toTensor().contiguous();
 
-    return y.squeeze(0); // remove batch dim
+    auto data = y.data_ptr<float>();
+    for (int i=0; i<block_size; i++){
+      outBuffer[i] = data[i];
+    }
   }
 
-  torch::Tensor encode_decode (torch::Tensor input) {
+  void encode_decode (float* input, float* outBuffer) {
     c10::InferenceMode guard;
 
-    inputs_rave[0] = input;
+    inputs_rave[0] = torch::from_blob(
+      input, block_size).reshape({1, 1, block_size});
+
     const auto y = this->model(inputs_rave).toTensor();
 
-    return y.squeeze(0); // remove batch dim
-
+    auto data = y.data_ptr<float>();
+    for (int i=0; i<block_size; i++){
+      outBuffer[i] = data[i];
+    }  
   }
 
-  torch::Tensor encode (torch::Tensor input) {
+  // TODO: version of prior which consumes last frame
+  // is this possible without custom RAVE export?
+  void prior (const float temperature, float* outBuffer) {
     c10::InferenceMode guard;
 
-    inputs_rave[0] = input;
-    const auto z = this->model.get_method("encode")(inputs_rave).toTensor();
+    inputs_rave[0] = torch::ones({1, 1, 1}) * temperature;
+    const auto z = this->model.get_method("prior")(
+      inputs_rave).toTensor();
 
-    return z.squeeze(0); // remove batch dim
+    auto data = z.data_ptr<float>();
+    for (int i=0; i<latent_size; i++){
+      outBuffer[i] = data[i];
+    }
   }
 
-  torch::Tensor decode (torch::Tensor latent) {
+  void encode (float* input, float* outBuffer) {
     c10::InferenceMode guard;
 
-    inputs_rave[0] = latent;
-    const auto y = this->model.get_method("decode")(inputs_rave).toTensor();
+    inputs_rave[0] = torch::from_blob(
+      input, block_size).reshape({1, 1, block_size});
 
-    return y.squeeze(0); // remove batch dim
+    const auto z = this->model.get_method("encode")(
+      inputs_rave).toTensor();
+
+    auto data = z.data_ptr<float>();
+    for (int i=0; i<latent_size; i++){
+      outBuffer[i] = data[i];
+    }
+  }
+
+  void decode (float* latent, float* outBuffer) {
+    c10::InferenceMode guard;
+
+    inputs_rave[0] = torch::from_blob(
+      latent, latent_size).reshape({1, latent_size, 1});
+
+    const auto y = this->model.get_method("decode")(
+      inputs_rave).toTensor();
+
+    auto data = y.data_ptr<float>();
+    for (int i=0; i<block_size; i++){
+      outBuffer[i] = data[i];
+    }  
   }
 
 };
 
+// RAVEBase has common parts of Encoder, Decoder, Prior functions
 class RAVEBase : public SCUnit {
 
 public:
     RAVEBase();
     ~RAVEBase();
 
-    // static RAVEModel model;
+    void write_zeros_kr();
 
-    RAVEModel model;
-    static std::map<std::string, RAVEModel> models;
-    // static bool model_created;
+    RAVEModel * model;
+    static std::map<std::string, RAVEModel* > models;
 
-    float * inBuffer;
+    float * inBuffer; // allocated in subclass constructor
     size_t bufPtr;
-    at::Tensor result;
-    float * resultData;
+
+    float * outBuffer; // allocated in subclass constructor
+
     bool first_block_done;
     size_t filename_length;
     size_t ugen_inputs;
@@ -187,6 +226,12 @@ class RAVEEncoder : public RAVEBase {
 class RAVEDecoder : public RAVEBase {
   public:
     RAVEDecoder();
+    size_t ugen_inputs;
+    void next(int nSamples);
+};
+class RAVEPrior: public RAVEBase {
+  public:
+    RAVEPrior();
     void next(int nSamples);
 };
 

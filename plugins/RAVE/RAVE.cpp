@@ -8,9 +8,7 @@ static InterfaceTable* ft;
 
 namespace RAVE {
 
-// RAVEModel RAVEBase::model = RAVEModel();
-
-auto RAVEBase::models = std::map<std::string, RAVEModel>();
+auto RAVEBase::models = std::map<std::string, RAVEModel* >();
 
 RAVEBase::RAVEBase() {
     bufPtr = 0;
@@ -26,9 +24,9 @@ RAVEBase::RAVEBase() {
 
     auto kv = models.find(path);
     if (kv==models.end()){
-        model = RAVEModel();
+        model = new RAVEModel();
         std::cout << "loading: \"" << path << "\"" << std::endl;
-        model.load(path);
+        model->load(path);
         models.insert({path, model});
     } else {
         model = kv->second;
@@ -38,31 +36,53 @@ RAVEBase::RAVEBase() {
 
 // TODO: how to avoid the hardcoded values here?
 RAVE::RAVE() : RAVEBase(){
-    inBuffer = (float*)RTAlloc(this->mWorld, INPUT_SIZE * sizeof(float));
+    inBuffer = (float*)RTAlloc(this->mWorld, model->block_size * sizeof(float));
+    outBuffer = (float*)RTAlloc(this->mWorld, model->block_size * sizeof(float));
     mCalcFunc = make_calc_function<RAVE, &RAVE::next>();
 }
 
+RAVEPrior::RAVEPrior() : RAVEBase(){
+    // currently unused but is freed in superclass destructor
+    inBuffer = (float*)RTAlloc(this->mWorld, model->latent_size * sizeof(float));
+    outBuffer = (float*)RTAlloc(this->mWorld, model->latent_size * sizeof(float));
+    mCalcFunc = make_calc_function<RAVEPrior, &RAVEPrior::next>();
+}
+
 RAVEEncoder::RAVEEncoder() : RAVEBase(){
-    inBuffer = (float*)RTAlloc(this->mWorld, INPUT_SIZE * sizeof(float));
+    inBuffer = (float*)RTAlloc(this->mWorld, model->block_size * sizeof(float));
+    outBuffer = (float*)RTAlloc(this->mWorld, model->latent_size * sizeof(float));
     mCalcFunc = make_calc_function<RAVEEncoder, &RAVEEncoder::next>();
-    // next(INPUT_SIZE);
+
+    // std::cout << 
+        // "RAVEEncoder latent size: " << model->latent_size << 
+        // "; creating " << model->latent_size << " outputs" << std::endl;
 }
 
 RAVEDecoder::RAVEDecoder() : RAVEBase(){
-    inBuffer = (float*)RTAlloc(this->mWorld, LATENT_SIZE * sizeof(float));
+    inBuffer = (float*)RTAlloc(this->mWorld, model->latent_size * sizeof(float));
+    outBuffer = (float*)RTAlloc(this->mWorld, model->block_size * sizeof(float));
     mCalcFunc = make_calc_function<RAVEDecoder, &RAVEDecoder::next>();
-    // next(INPUT_SIZE);
 
     // filename len, *chars, inputs len, *inputs
-    ugen_inputs = in0(filename_length+1);
+
+    // number of inputs provided in synthdef
+    this->ugen_inputs = in0(filename_length+1);
 
     std::cout << 
-        "model latent size: " << model.latent_size << 
+        "RAVEDecoder latent size: " << model->latent_size << 
         "; found " << ugen_inputs << " inputs" << std::endl;
 }
 
 RAVEBase::~RAVEBase() {
     RTFree(this->mWorld, inBuffer);
+    RTFree(this->mWorld, outBuffer);
+}
+
+void RAVEBase::write_zeros_kr() {
+    // std::cout<<"write zeros"<<std::endl;
+    for (int j=0; j < model->latent_size; ++j){
+        out0(j) = 0;
+    }
 }
 
 void RAVE::next(int nSamples) {
@@ -70,58 +90,52 @@ void RAVE::next(int nSamples) {
     const float use_prior = in0(filename_length+2);
     const float temperature = in0(filename_length+3);
 
-    float* outbuf = out(0);
+    float* output = out(0);
 
     for (int i = 0; i < nSamples; ++i) {
-        if (!model.loaded) {
-            outbuf[i] = 0;
+        if (!model->loaded) {
+            output[i] = 0;
             continue;
         }
 
         inBuffer[bufPtr] = input[i];
         bufPtr++;
-        if(bufPtr == INPUT_SIZE){
+        if(bufPtr == model->block_size){
             //process block
-            at::Tensor frame = torch::from_blob(inBuffer, model.block_size);
             if(use_prior){
-                result = model.sample_from_prior(temperature);
+                model->prior_decode(temperature, outBuffer);
             } else {
-                frame = torch::reshape(frame, {1,1,model.block_size});
-                result = model.encode_decode(frame);
+                model->encode_decode(inBuffer, outBuffer);
             }
-            resultData = result.data_ptr<float>();
 
             bufPtr = 0;
             first_block_done = true;
         }
 
         if (first_block_done){
-            outbuf[i] = resultData[bufPtr];
+            output[i] = outBuffer[bufPtr];
         }
         else {
-            outbuf[i] = 0;
+            output[i] = 0;
         }
 
     }
 }
 
-void RAVEEncoder::next(int nSamples) {
-    const float* input = in(filename_length+1);
+void RAVEPrior::next(int nSamples) {
+    const float temperature = in0(filename_length+1);
 
-    // should write zeros here but don't know how many outputs before model is loaded
-    // leaving this since we want to change how model loading works anyway...
-    if (!model.loaded) return;
+    if (!model->loaded) {
+        write_zeros_kr();
+        return;
+    }
 
-    for (int i = 0; i < fullBufferSize(); ++i) {
-
-        inBuffer[bufPtr] = input[i];
+    for (int i=0; i<fullBufferSize(); ++i) {
+        // just count samples, there is no audio input
         bufPtr++;
-        if(bufPtr == INPUT_SIZE){
+        if(bufPtr == model->block_size){
             //process block
-            at::Tensor frame = torch::from_blob(inBuffer, model.block_size);
-            frame = torch::reshape(frame, {1,1,model.block_size});
-            result = model.encode(frame);
-            resultData = result.data_ptr<float>();
+            model->prior(temperature, outBuffer);
 
             bufPtr = 0;
             first_block_done = true;
@@ -130,46 +144,79 @@ void RAVEEncoder::next(int nSamples) {
 
     // write results to N kr outputs once per block
     if (first_block_done){
-        for (int j=0; j < model.latent_size; j++){
-            out0(j) = resultData[j];
+        for (int j=0; j<model->latent_size; ++j){
+            out0(j) = outBuffer[j];
         }
     }
     else {
-        for (int j=0; j < model.latent_size; j++){
-            out0(j) = 0;
+        write_zeros_kr();
+    }
+}
+
+void RAVEEncoder::next(int nSamples) {
+    const float* input = in(filename_length+1);
+
+    if (!model->loaded) {
+        write_zeros_kr();
+        return;
+    }
+
+    for (int i = 0; i < fullBufferSize(); ++i) {
+
+        inBuffer[bufPtr] = input[i];
+        bufPtr++;
+        if(bufPtr == model->block_size){
+            //process block
+            model->encode(inBuffer, outBuffer);
+
+            bufPtr = 0;
+            first_block_done = true;
         }
+    }
+
+    // write results to N kr outputs once per block
+    if (first_block_done){
+        for (int j=0; j < model->latent_size; ++j){
+            out0(j) = outBuffer[j];
+        }
+    }
+    else {
+        write_zeros_kr();
     }
 }
 
 void RAVEDecoder::next(int nSamples) {
-    float* outbuf = out(0);
+    float* output = out(0);
 
     for (int i = 0; i < nSamples; ++i) {
-        if (!model.loaded) {
-            outbuf[i] = 0;
+        if (!model->loaded) {
+            output[i] = 0;
             continue;
         }
 
         bufPtr++;
-        if(bufPtr == INPUT_SIZE){
-            for (int j=0; j < model.latent_size; j++){
-                inBuffer[j] = in0(j + filename_length + 2);
+        if(bufPtr == model->block_size){
+            // read only up to latent_size inputs,
+            // or zero any extra latents if there are fewer inputs
+            for (int j=0; j < model->latent_size; ++j){
+                if (j<this->ugen_inputs){
+                    inBuffer[j] = in0(j + filename_length + 2);
+                } else{
+                    inBuffer[j] = 0;
+                }
             }
             //process block
-            at::Tensor frame = torch::from_blob(inBuffer, model.latent_size);
-            frame = torch::reshape(frame, {1,model.latent_size,1});
-            result = model.decode(frame);
-            resultData = result.data_ptr<float>();
+            model->decode(inBuffer, outBuffer);
 
             bufPtr = 0;
             first_block_done = true;
         }
 
         if (first_block_done){
-            outbuf[i] = resultData[bufPtr];
+            output[i] = outBuffer[bufPtr];
         }
         else {
-            outbuf[i] = 0;
+            output[i] = 0;
         }
 
     }
@@ -181,6 +228,7 @@ PluginLoad(RAVEUGens) {
     // Plugin magic
     ft = inTable;
     registerUnit<RAVE::RAVE>(ft, "RAVE", false);
+    registerUnit<RAVE::RAVEPrior>(ft, "RAVEPrior", false);
     registerUnit<RAVE::RAVEEncoder>(ft, "RAVEEncoder", false);
     registerUnit<RAVE::RAVEDecoder>(ft, "RAVEDecoder", false);
 }
