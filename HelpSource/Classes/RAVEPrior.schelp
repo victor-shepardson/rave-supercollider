@@ -1,10 +1,10 @@
-class:: RAVE
+class:: RAVEPrior
 summary:: SuperCollider plugin for RAVE autoencoder
-related:: Classes/RAVEPrior, Classes/RAVEEncoder, Classes/RAVEDecoder
+related:: Classes/RAVEPrior, Classes/RAVEEncoder, Classes/RAVE
 categories:: UGens>Wrappers
 
 description::
-RAVE autoencoder plugin for SuperCollider. This class includes the RAVE encoder, decoder and prior models. For more fine-grained control, see the separate RAVEEncoder, RAVEDecoder and RAVEPrior UGens.
+RAVE autoencoder plugin for SuperCollider. This class includes the RAVE prior model only. It takes an optional control-rate input and produces an Array of control-rate outputs, one each latent dimension.
 
 note::
 must use server hardwareBufferSize=2048 for good performance.
@@ -23,14 +23,11 @@ method::new
 argument::filename
 String, path to torchscript file containing a RAVE model.
 
-argument::input
-audio input for encoder-decoder mode; ignored when prior>0.
-
-argument::prior
-control signal. if greater than zero, sample from prior instead of transforming input.
+argument::latentSize
+Integer, number of latent dimensions in the model.
 
 argument::temperature
-control signal, temperature (typically 0-1) when sampling prior; ignored when prior=0.
+Optional control-rate input for the sampling temperature. 0 is deterministic, 1 is full temperature, >1 is more random, <1 is less random.
 
 examples::
 
@@ -54,21 +51,19 @@ s.waitForBoot{
 
 (
 ~synth = {
-    var out = Limiter.ar(
-        RAVE.new(
+	var z = RAVEPrior.new(
+		"/Users/victor/rave-models/speech/speech_realtime.ts", 8, // filename, latent size
+		DC.kr(0.7), // prior temperature
+	);
+	z.poll(2);
+
+	Limiter.ar(
+        RAVEDecoder.new(
 			"/Users/victor/rave-models/speech/speech_realtime.ts",
-            SoundIn.ar(0),// input for timbre transfer
-            \prior.kr(0), // 0 for timbre transfer, 1 for generation
-            \temp.kr(1) // temperature of generation
-        )
-    );
-    out!2;
-
+			z))!2 // latent inputs
+	        // [z, z+z.collect{PinkNoise.kr*2-1/3}])) // pseudo-stereo
+    ;
 }.play(outbus:~bus);
-
-)
-~synth.set(\prior, 1); // use prior instead of encoder
-~synth.set(\temp, 0); // then set the prior temperature
 
 )
 ::

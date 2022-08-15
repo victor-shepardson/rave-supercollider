@@ -46,6 +46,28 @@ s.quit
 ~synth.set(\prior, 1);
 ~synth.set(\temp, 0);
 
+
+
+// Encoder only
+// RAVEEncoder needs the latent size as an argument, since it needs to create that many
+// control rate outputs.
+(
+~synth = {
+	var z = RAVEEncoder.new(
+		// "/Users/victor/rave-models/animal2rt_3M_sc.ts", 4,
+		"/Users/victor/rave-models/speech/speech_realtime.ts", 8, // filename, latent size
+		SoundIn.ar(0),// input for latent embedding
+	);
+	z.poll(2,);
+	Limiter.ar(
+		z[0].exp * Splay.ar(z[1..].collect{
+			arg zi, i; SinOsc.ar(i+zi*100+150)
+		}), 0.2)
+}.play(outbus:~bus);
+
+)
+
+
 // separate encoder/decoder
 // RAVEEncoder needs the latent size as an argument, since it needs to create that many
 // control rate outputs.

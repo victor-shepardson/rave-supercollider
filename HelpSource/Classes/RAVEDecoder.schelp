@@ -1,10 +1,10 @@
-class:: RAVE
+class:: RAVEDecoder
 summary:: SuperCollider plugin for RAVE autoencoder
-related:: Classes/RAVEPrior, Classes/RAVEEncoder, Classes/RAVEDecoder
+related:: Classes/RAVEPrior, Classes/RAVEEncoder, Classes/RAVE
 categories:: UGens>Wrappers
 
 description::
-RAVE autoencoder plugin for SuperCollider. This class includes the RAVE encoder, decoder and prior models. For more fine-grained control, see the separate RAVEEncoder, RAVEDecoder and RAVEPrior UGens.
+RAVE autoencoder plugin for SuperCollider. This class includes the RAVE decoder only. It takes a control-rate input for each latent dimension and produces audio.
 
 note::
 must use server hardwareBufferSize=2048 for good performance.
@@ -24,13 +24,7 @@ argument::filename
 String, path to torchscript file containing a RAVE model.
 
 argument::input
-audio input for encoder-decoder mode; ignored when prior>0.
-
-argument::prior
-control signal. if greater than zero, sample from prior instead of transforming input.
-
-argument::temperature
-control signal, temperature (typically 0-1) when sampling prior; ignored when prior=0.
+Array of control-rate inputs, one for each latent dimension.
 
 examples::
 
@@ -54,21 +48,30 @@ s.waitForBoot{
 
 (
 ~synth = {
-    var out = Limiter.ar(
-        RAVE.new(
+	var z = 8.collect{ |i| ("latent_"++i).asSymbol.kr};
+	Limiter.ar(
+        RAVEDecoder.new(
 			"/Users/victor/rave-models/speech/speech_realtime.ts",
-            SoundIn.ar(0),// input for timbre transfer
-            \prior.kr(0), // 0 for timbre transfer, 1 for generation
-            \temp.kr(1) // temperature of generation
+            z, // latent inputs
         )
-    );
-    out!2;
-
+    )!2;
 }.play(outbus:~bus);
 
+~set = { |key, fn| ~synth.set(key, Ndef(key, fn))};
 )
-~synth.set(\prior, 1); // use prior instead of encoder
-~synth.set(\temp, 0); // then set the prior temperature
 
+// live-code the latent space
+(
+r = 48000/2048;
+b = 0;
+m = 0.1;
+~set.(\latent_0, {SinOsc.kr(r/4)*2});
+~set.(\latent_1, {SinOsc.kr(r/3)*2});
+~set.(\latent_2, {SinOsc.kr(r/7)*2});
+~set.(\latent_3, {SinOsc.kr(r/7)*2});
+~set.(\latent_4, {SinOsc.kr(r/11)*2});
+~set.(\latent_5, {SinOsc.kr(r/13)*2});
+~set.(\latent_6, {SinOsc.kr(r/17)*2});
+~set.(\latent_7, {SinOsc.kr(r/19)*2});
 )
 ::
