@@ -23,7 +23,6 @@ RAVEKr : MultiOutUGen {
 	*new { |filename, latentSize ...input_args|
 		var file_args = Array.with(
 			filename.size, *filename.asList.collect(_.ascii));
-		var inst, chan;
 		filename.isString.not.if{
 			"ERROR: % first argument should be a String (the RAVE model filename)
 			note that the filename does *not* support multichannel expansion"
@@ -34,8 +33,7 @@ RAVEKr : MultiOutUGen {
 			note that the latent size does *not* support multichannel expansion"
 			.format(this).postln;
 		};
-		#inst, chan = this.multiNew('control', latentSize, *(file_args++input_args));
-		^chan
+		^this.multiNew('control', latentSize, *(file_args++input_args));
 	}
 	checkInputs {
 		/* TODO */
@@ -46,7 +44,7 @@ RAVEKr : MultiOutUGen {
 		channels = latentSize.collect{ |i|
 			OutputProxy('control', this, i)
 		};
-		^[this, channels]
+		^ channels
 	}
 }
 
@@ -57,7 +55,7 @@ RAVEDecoder : UGen {
 	*new { |filename, input|
 		var file_args = Array.with(filename.size, *filename.asList.collect(_.ascii));
 		// support multichannel expansion when passing array of latent vectors
-		var flop_input = input[0].isSequenceableCollection.if{input.flop}{input};
+		var flop_input = input.postln[0].postln.isSequenceableCollection.postln.if{input.flop}{input};
 		var input_args = Array.with(flop_input.size, *flop_input);
 		var inst = this.multiNew('audio', *(file_args++input_args));
 		^inst

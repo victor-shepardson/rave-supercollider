@@ -54,15 +54,11 @@ s.quit
 (
 ~synth = {
 	var z = RAVEEncoder.new(
-		// "/Users/victor/rave-models/animal2rt_3M_sc.ts", 4,
 		"/Users/victor/rave-models/speech/speech_realtime.ts", 8, // filename, latent size
 		SoundIn.ar(0),// input for latent embedding
 	);
 	z.poll(2,);
-	Limiter.ar(
-		z[0].exp * Splay.ar(z[1..].collect{
-			arg zi, i; SinOsc.ar(i+zi*100+150)
-		}), 0.2)
+	DC.ar(0)!2
 }.play(outbus:~bus);
 
 )
@@ -78,8 +74,9 @@ s.quit
 	var z = RAVEEncoder.new(
 		// "/Users/victor/rave-models/animal2rt_3M_sc.ts", 4,
 		"/Users/victor/rave-models/speech/speech_realtime.ts", 8, // filename, latent size
-		SoundIn.ar(0),// input for latent embedding
+		SoundIn.ar([0,1]),// input for latent embedding
 	);
+	z.size.postln; z.flop.size.postln;
 	z.poll(2,);
 	// DC.ar(0)!2;
 	Limiter.ar(
@@ -89,7 +86,7 @@ s.quit
 			z
 			// 0-z.shift(1) // latent inputs
 		)
-	)!2;
+	)//!2;
 }.play(outbus:~bus);
 
 )
