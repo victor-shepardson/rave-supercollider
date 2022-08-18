@@ -1,6 +1,6 @@
 # RAVE for SuperCollider
 
-RAVE autoencoder UGens for SuperCollider.
+RAVE autoencoder (https://github.com/acids-ircam/RAVE) UGens for SuperCollider.
 
 ### Requirements
 

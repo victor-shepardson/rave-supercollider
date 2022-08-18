@@ -32,6 +32,7 @@ s.quit
     var out = Limiter.ar(
         RAVE.new(
 			"/Users/victor/rave-models/speech/speech_realtime.ts",
+			// "/Users/victor/Library/Application\ Support/Qosmo/Neutone/models/83ecd7d0f50c23bcb0f2d3ec12872dd9", // does not work
             SoundIn.ar(0),// input for timbre transfer
             \prior.kr(0), // 0 for timbre transfer, 1 for generation
             \temp.kr(1) // temperature of generation
@@ -74,10 +75,10 @@ s.quit
 	var z = RAVEEncoder.new(
 		// "/Users/victor/rave-models/animal2rt_3M_sc.ts", 4,
 		"/Users/victor/rave-models/speech/speech_realtime.ts", 8, // filename, latent size
-		SoundIn.ar([0,1]),// input for latent embedding
+		SoundIn.ar(0),// input for latent embedding
+		// SoundIn.ar(0)!2,// input for latent embedding
 	);
-	z.size.postln; z.flop.size.postln;
-	z.poll(2,);
+	// z[0].poll(2, \A); z[1].poll(2, \B);
 	// DC.ar(0)!2;
 	Limiter.ar(
 		RAVEDecoder.new(
@@ -85,8 +86,8 @@ s.quit
 			"/Users/victor/rave-models/speech/speech_realtime.ts",
 			z
 			// 0-z.shift(1) // latent inputs
-		)
-	)//!2;
+		)!2
+	);
 }.play(outbus:~bus);
 
 )

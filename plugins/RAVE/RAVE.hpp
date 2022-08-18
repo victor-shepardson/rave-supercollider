@@ -53,10 +53,15 @@ struct RAVEModel {
     }
     catch (const c10::Error& e) {
       // why no error when filename is bad?
-        std::cerr << e.what();
-        std::cerr << e.msg();
-        std::cerr << "error loading the model\n";
+        std::cout << e.what();
+        std::cout << e.msg();
+        std::cout << "error loading the model\n";
         return;
+    }
+
+    // support for Neutone models
+    if (this->model.hasattr("model")){
+      this->model = this->model.attr("model").toModule();
     }
 
     this->block_size = this->latent_size = this->sr = this->prior_temp_size = -1;
@@ -70,13 +75,19 @@ struct RAVEModel {
         //     std::cout << i.value << std::endl;
         //     this -> latent_size = i.value.item<int>();
         // }
-        if ((i.name == "_rave.decode_params") || (i.name == "decode_params")) {
+        if (
+          (i.name == "_rave.decode_params") 
+          || (i.name == "decode_params")
+          ) {
             // std::cout<<i.name<<std::endl;
             // std::cout << i.value << std::endl;
             this->block_size = i.value[1].item<int>();
             this->latent_size = i.value[0].item<int>();
         }
-        if ((i.name == "_rave.sampling_rate") || (i.name == "sampling_rate")) {
+        if (
+          (i.name == "_rave.sampling_rate") 
+          || (i.name == "sampling_rate")
+          ) {
             // std::cout<<i.name<<std::endl;
             // std::cout << i.value << std::endl;
             this->sr = i.value.item<int>();
