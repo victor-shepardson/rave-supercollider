@@ -15,8 +15,8 @@ jobs:
           - name: macOS-x64
             os: macos-latest
 
-          - name: Linux-x64
-            os: ubuntu-latest
+          # - name: Linux-x64
+            # os: ubuntu-latest
 
           # - name: Windows-x64
           #   os: windows-2019
@@ -44,8 +44,9 @@ jobs:
 
     - name: get torch
       run: |
+        which python
         mamba install pytorch=1.12 -c pytorch
-        python -c "import torch; from pathlib import Path; print('TORCH_PATH='+str(Path(torch.__file__).parent))" | tee -a $GITHUB_ENV
+        $(conda info --base)/bin/python -c "import torch; from pathlib import Path; print(f'TORCH_PATH={Path(torch.__file__).parent}')" | tee -a $GITHUB_ENV
 
       # Create a separate build directory
       # We'll use this as our working directory for subsequent commands
