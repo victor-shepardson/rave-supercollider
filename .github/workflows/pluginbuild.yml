@@ -37,10 +37,12 @@ jobs:
         path: ${{ env.SC_PATH }}
         ref: main
 
-    - name: get libtorch
+    - name: get mamba
       uses: conda-incubator/setup-miniconda@v2
       with:
         miniforge-variant: Mambaforge
+
+    - name: get torch
       run: |
         mamba install pytorch=1.12 -c pytorch
         export TORCH_PATH=mambaforge/pkgs/pytorch*/lib/python3.*/site-packages/torch
