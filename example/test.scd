@@ -31,9 +31,10 @@ s.quit
 
     var out = Limiter.ar(
         RAVE.new(
-			"/Users/victor/rave-models/speech/speech_realtime.ts",
-			// "/Users/victor/Library/Application\ Support/Qosmo/Neutone/models/83ecd7d0f50c23bcb0f2d3ec12872dd9", // does not work
-            SoundIn.ar(0),// input for timbre transfer
+			"/Users/victor/Downloads/rave_vctk-low-latency-hilr-lokld-vae-0215.ts",
+			// "/Users/victor/rave-models/speech/speech_realtime.ts",
+			// "/Users/victor/Library/Application\ Support/Qosmo/Neutone/models/83ecd7d0f50c23bcb0f2d3ec12872dd9", // does not work -- neutone replaces `forward` i think
+            SoundIn.ar(0), // input for timbr==e transfer
             \prior.kr(0), // 0 for timbre transfer, 1 for generation
             \temp.kr(1) // temperature of generation
         )
@@ -46,6 +47,21 @@ s.quit
 )
 ~synth.set(\prior, 1);
 ~synth.set(\temp, 0);
+
+
+// test latency of 'no-latency' model
+(
+~synth = {
+	var in = Blip.ar(1, 100)*SinOsc.ar(200)/2;
+    var out = RAVE.new(
+		"/Users/victor/Downloads/rave_vctk-low-latency-hilr-lokld-vae-0215.ts",
+		in, // input for timbre transfer
+		\prior.kr(0), // 0 for timbre transfer, 1 for generation
+		\temp.kr(1) // temperature of generation
+	);
+	Limiter.ar([in, out], 0.2);
+}.play(outbus:~bus);
+)
 
 
 
@@ -75,6 +91,7 @@ s.quit
 	var z = RAVEEncoder.new(
 		// "/Users/victor/rave-models/animal2rt_3M_sc.ts", 4,
 		"/Users/victor/rave-models/speech/speech_realtime.ts", 8, // filename, latent size
+		// "/Users/victor/Library/Application\ Support/Qosmo/Neutone/models/83ecd7d0f50c23bcb0f2d3ec12872dd9", 8,
 		SoundIn.ar(0),// input for latent embedding
 		// SoundIn.ar(0)!2,// input for latent embedding
 	);
@@ -84,6 +101,7 @@ s.quit
 		RAVEDecoder.new(
 			// "/Users/victor/rave-models/animal2rt_3M_sc.ts",
 			"/Users/victor/rave-models/speech/speech_realtime.ts",
+			// "/Users/victor/Library/Application\ Support/Qosmo/Neutone/models/83ecd7d0f50c23bcb0f2d3ec12872dd9",
 			z
 			// 0-z.shift(1) // latent inputs
 		)!2

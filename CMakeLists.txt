@@ -26,6 +26,10 @@ endif()
 # Windows - puts redistributable DLLs in install directory
 include(InstallRequiredSystemLibraries)
 
+# macOS 
+set(CMAKE_MACOSX_RPATH 1)
+set(CMAKE_INSTALL_RPATH "@loader_path")
+
 sc_check_sc_path("${SC_PATH}")
 message(STATUS "Found SuperCollider: ${SC_PATH}")
 set(SC_PATH "${SC_PATH}" CACHE PATH
@@ -62,6 +66,15 @@ if (NOVA_SIMD)
 endif()
 
 find_package(Torch REQUIRED) # find torch
+
+include(CMakePrintHelpers)
+# cmake_print_variables(TORCH_LIBRARIES)
+# cmake_print_variables(TORCH_INCLUDE_DIRS)
+# cmake_print_variables(TORCH_INSTALL_PREFIX)
+file(GLOB TORCH_DLLS "${TORCH_INSTALL_PREFIX}/lib/*[.dylib|.so|.dll]")
+# cmake_print_variables(TORCH_DLLS)
+
+install(FILES ${TORCH_DLLS} DESTINATION "RAVE")
 
 ####################################################################################################
 # Begin target RAVE

@@ -102,7 +102,7 @@ void RAVE::next(int nSamples) {
         bufPtr++;
         if(bufPtr == model->block_size){
             //process block
-            if(use_prior){
+            if(use_prior && model->prior_temp_size>0){
                 model->prior_decode(temperature, outBuffer);
             } else {
                 model->encode_decode(inBuffer, outBuffer);
@@ -125,7 +125,7 @@ void RAVE::next(int nSamples) {
 void RAVEPrior::next(int nSamples) {
     const float temperature = in0(filename_length+1);
 
-    if (!model->loaded) {
+    if (!model->loaded || model->prior_temp_size<=0) {
         write_zeros_kr();
         return;
     }
