@@ -12,8 +12,8 @@ jobs:
       matrix:
         include:
 
-          - name: macOS-x64
-            os: macos-latest
+          # - name: macOS-x64
+            # os: macos-latest
 
           - name: Linux-x64
             os: ubuntu-latest
@@ -44,7 +44,7 @@ jobs:
 
     - name: get torch
       run: |
-        mamba install pytorch=1.12 -c pytorch
+        mamba install pytorch=1.12 -c pytorch-cpu
         $(conda info --base)/bin/python -c "import torch; from pathlib import Path; print(f'TORCH_PATH={Path(torch.__file__).parent}')" | tee -a $GITHUB_ENV
 
       # Create a separate build directory
