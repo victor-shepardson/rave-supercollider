@@ -37,6 +37,14 @@ jobs:
         path: ${{ env.SC_PATH }}
         ref: main
 
+    - name: get libtorch
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        miniforge-variant: Mambaforge
+      run: |
+        mamba install pytorch=1.12 -c pytorch
+        export TORCH_PATH=mambaforge/pkgs/pytorch*/lib/python3.*/site-packages/torch
+
       # Create a separate build directory
       # We'll use this as our working directory for subsequent commands
     - name: Create Build Environment
@@ -46,7 +54,7 @@ jobs:
     - name: Configure CMake
       shell: bash
       working-directory: ${{ env.BUILD_PATH }}
-      run: cmake .. -DCMAKE_BUILD_TYPE='Release' -DSC_PATH="$SC_PATH" -DCMAKE_INSTALL_PREFIX="$INSTALL_PATH"
+      run: cmake .. -DCMAKE_BUILD_TYPE='Release' -DSC_PATH="$SC_PATH" -DCMAKE_INSTALL_PREFIX="$INSTALL_PATH" -DCMAKE_PREFIX_PATH="${TORCH_PATH};/usr/local"
 
     - name: Build
       shell: bash
