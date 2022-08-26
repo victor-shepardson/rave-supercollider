@@ -107,8 +107,7 @@ struct RAVEModel {
       return;
     }
     if (this->prior_temp_size<0){
-      std::cout << "warning: RAVE model in " << rave_model_file << " has no prior;" << std::endl;
-      std::cout << "\tRAVEPrior and RAVE with prior>0 will not function." << std::endl;
+      std::cout << "WARNING: RAVE model in " << rave_model_file << " has no prior; RAVEPrior and RAVE with prior>0 will not function." << std::endl;
     }
 
     std::cout << "\tblock size: " << this->block_size << std::endl;
@@ -219,8 +218,9 @@ public:
     float * outBuffer; // allocated in subclass constructor
 
     bool first_block_done;
-    size_t filename_length;
-    size_t ugen_inputs;
+    int filename_length;
+    int ugen_inputs;
+    int ugen_outputs;
 
 };
 

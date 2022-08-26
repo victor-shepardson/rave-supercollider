@@ -50,9 +50,11 @@ s.quit
 
 
 // test latency of 'no-latency' model
+// ~100ms?
 (
 ~synth = {
-	var in = Blip.ar(1, 100)*SinOsc.ar(200)/2;
+	// var in = Blip.ar(1, 150)*Pulse.ar(200)/2;
+	var in = Saw.ar(-1) * Pulse.ar(200)/2;
     var out = RAVE.new(
 		"/Users/victor/Downloads/rave_vctk-low-latency-hilr-lokld-vae-0215.ts",
 		in, // input for timbre transfer

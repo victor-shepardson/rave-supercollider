@@ -33,7 +33,8 @@ RAVEKr : MultiOutUGen {
 			note that the latent size does *not* support multichannel expansion"
 			.format(this).postln;
 		};
-		^this.multiNew('control', latentSize, *(file_args++input_args));
+		^this.multiNew('control', latentSize, *(
+			file_args++[latentSize]++input_args));
 	}
 	checkInputs {
 		/* TODO */

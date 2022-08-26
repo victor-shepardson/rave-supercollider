@@ -34,11 +34,12 @@ RAVEBase::RAVEBase() {
     }
 }
 
-// TODO: how to avoid the hardcoded values here?
 RAVE::RAVE() : RAVEBase(){
     inBuffer = (float*)RTAlloc(this->mWorld, model->block_size * sizeof(float));
     outBuffer = (float*)RTAlloc(this->mWorld, model->block_size * sizeof(float));
     mCalcFunc = make_calc_function<RAVE, &RAVE::next>();
+
+    this->ugen_outputs = 1;
 }
 
 RAVEPrior::RAVEPrior() : RAVEBase(){
@@ -46,12 +47,22 @@ RAVEPrior::RAVEPrior() : RAVEBase(){
     inBuffer = (float*)RTAlloc(this->mWorld, model->latent_size * sizeof(float));
     outBuffer = (float*)RTAlloc(this->mWorld, model->latent_size * sizeof(float));
     mCalcFunc = make_calc_function<RAVEPrior, &RAVEPrior::next>();
+
+    this->ugen_outputs = in0(filename_length+1);
+    if (ugen_outputs != model->latent_size){
+        std::cout << "WARNING: UGen outputs (" << ugen_outputs << ") do not match number of latent dimensions in model (" << model->latent_size << ")" << std::endl;
+    }
 }
 
 RAVEEncoder::RAVEEncoder() : RAVEBase(){
     inBuffer = (float*)RTAlloc(this->mWorld, model->block_size * sizeof(float));
     outBuffer = (float*)RTAlloc(this->mWorld, model->latent_size * sizeof(float));
     mCalcFunc = make_calc_function<RAVEEncoder, &RAVEEncoder::next>();
+
+    this->ugen_outputs = in0(filename_length+1);
+    if (ugen_outputs != model->latent_size){
+        std::cout << "WARNING: UGen outputs (" << ugen_outputs << ") do not match number of latent dimensions in model (" << model->latent_size << ")" << std::endl;
+    }
 
     // std::cout << 
         // "RAVEEncoder latent size: " << model->latent_size << 
@@ -67,6 +78,7 @@ RAVEDecoder::RAVEDecoder() : RAVEBase(){
 
     // number of inputs provided in synthdef
     this->ugen_inputs = in0(filename_length+1);
+    this->ugen_outputs = 1;
 
     std::cout << 
         "RAVEDecoder latent size: " << model->latent_size << 
@@ -80,7 +92,7 @@ RAVEBase::~RAVEBase() {
 
 void RAVEBase::write_zeros_kr() {
     // std::cout<<"write zeros"<<std::endl;
-    for (int j=0; j < model->latent_size; ++j){
+    for (int j=0; j < this->ugen_outputs; ++j){
         out0(j) = 0;
     }
 }
@@ -123,7 +135,7 @@ void RAVE::next(int nSamples) {
 }
 
 void RAVEPrior::next(int nSamples) {
-    const float temperature = in0(filename_length+1);
+    const float temperature = in0(filename_length+2);
 
     if (!model->loaded || model->prior_temp_size<=0) {
         write_zeros_kr();
@@ -144,7 +156,7 @@ void RAVEPrior::next(int nSamples) {
 
     // write results to N kr outputs once per block
     if (first_block_done){
-        for (int j=0; j<model->latent_size; ++j){
+        for (int j=0; j<std::min(model->latent_size, this->ugen_outputs); ++j){
             out0(j) = outBuffer[j];
         }
     }
@@ -154,7 +166,7 @@ void RAVEPrior::next(int nSamples) {
 }
 
 void RAVEEncoder::next(int nSamples) {
-    const float* input = in(filename_length+1);
+    const float* input = in(filename_length+2);
 
     if (!model->loaded) {
         write_zeros_kr();
@@ -176,7 +188,7 @@ void RAVEEncoder::next(int nSamples) {
 
     // write results to N kr outputs once per block
     if (first_block_done){
-        for (int j=0; j < model->latent_size; ++j){
+        for (int j=0; j < std::min(model->latent_size, this->ugen_outputs); ++j){
             out0(j) = outBuffer[j];
         }
     }
