@@ -10,16 +10,17 @@ jobs:
     name: ${{ matrix.name }}
     strategy:
       matrix:
-        include:
+        os: [ubuntu-latest, macos-latest]
+        # include:
 
-          - name: macOS
-            os: macos-10.15
+          # - name: macOS
+          #   os: macos-10.15
 
-          - name: Linux-x64
-            os: ubuntu-18.04
+          # - name: Linux-x64
+          #   os: ubuntu-18.04
 
-          - name: Windows-x64
-            os: windows-2019
+          # - name: Windows-x64
+          #   os: windows-2019
 
     env:
       SC_PATH: ${{ github.workspace }}/supercollider
@@ -45,7 +46,7 @@ jobs:
     - name: get torch
       run: |
         mamba install pytorch=1.12 -c pytorch
-        export TORCH_PATH=mambaforge/pkgs/pytorch*/lib/python3.*/site-packages/torch
+        echo TORCH_PATH=`echo mambaforge/pkgs/pytorch*/lib/python3.*/site-packages/torch` | tee -a $GITHUB_ENV
 
       # Create a separate build directory
       # We'll use this as our working directory for subsequent commands
