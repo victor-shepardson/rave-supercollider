@@ -44,7 +44,7 @@ jobs:
 
     - name: get torch
       run: |
-        mamba install pytorch=1.12 -c pytorch-cpu
+        mamba install pytorch-cpu=1.12 -c pytorch
         $(conda info --base)/bin/python -c "import torch; from pathlib import Path; print(f'TORCH_PATH={Path(torch.__file__).parent}')" | tee -a $GITHUB_ENV
 
       # Create a separate build directory
