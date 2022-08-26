@@ -9,17 +9,18 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.name }}
     strategy:
+      fail-fast: false
       matrix:
         include:
 
-          - name: macOS
-            os: macos-10.15
+          - name: macOS-x64
+            os: macos-latest
 
           - name: Linux-x64
-            os: ubuntu-18.04
+            os: ubuntu-latest
 
-          - name: Windows-x64
-            os: windows-2019
+          # - name: Windows-x64
+          #   os: windows-2019
 
     env:
       SC_PATH: ${{ github.workspace }}/supercollider
@@ -37,6 +38,39 @@ jobs:
         path: ${{ env.SC_PATH }}
         ref: main
 
+    - name: get mamba (macOS)
+      if: runner.os == 'macOS'
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        miniforge-variant: Mambaforge
+
+    - name: get torch (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        mamba install pytorch=1.12 -c pytorch
+        $(conda info --base)/bin/python -c "import torch; from pathlib import Path; print(f'TORCH_PATH={Path(torch.__file__).parent}')" | tee -a $GITHUB_ENV
+
+    # - name: get libtorch (macOS)
+    #   if: runner.os == 'macOS'
+    #   run: |
+    #     wget https://download.pytorch.org/libtorch/cpu/libtorch-macos-1.12.1.zip
+    #     unzip "libtorch-macos-1.12.1.zip"
+    #     echo TORCH_PATH=$(pwd)/libtorch | tee -a $GITHUB_ENV
+
+    - name: get clang (Linux)
+      if: runner.os == 'Linux'
+      uses: KyleMayes/install-llvm-action@v1
+      with:
+        version: "13.0"
+
+    - name: get libtorch (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        wget https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-1.12.1%2Bcpu.zip
+        unzip "libtorch-cxx11-abi-shared-with-deps-1.12.1+cpu.zip"
+        echo TORCH_PATH=$(pwd)/libtorch | tee -a $GITHUB_ENV
+        echo CXX=clang | tee -a $GITHUB_ENV
+
       # Create a separate build directory
       # We'll use this as our working directory for subsequent commands
     - name: Create Build Environment
@@ -46,7 +80,7 @@ jobs:
     - name: Configure CMake
       shell: bash
       working-directory: ${{ env.BUILD_PATH }}
-      run: cmake .. -DCMAKE_BUILD_TYPE='Release' -DSC_PATH="$SC_PATH" -DCMAKE_INSTALL_PREFIX="$INSTALL_PATH"
+      run: cmake .. -DCMAKE_BUILD_TYPE='Release' -DSC_PATH="$SC_PATH" -DCMAKE_INSTALL_PREFIX="$INSTALL_PATH" -DCMAKE_PREFIX_PATH="${TORCH_PATH};/usr/local"
 
     - name: Build
       shell: bash

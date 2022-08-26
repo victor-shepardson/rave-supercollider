@@ -11,6 +11,8 @@ set(project_name "RAVE")
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake_modules ${CMAKE_MODULE_PATH})
 set(CMAKE_CXX_STANDARD 17)
 
+include(CMakePrintHelpers)
+
 ####################################################################################################
 # load modules
 include(SuperColliderServerPlugin RESULT_VARIABLE server_plugin_found)
@@ -26,9 +28,14 @@ endif()
 # Windows - puts redistributable DLLs in install directory
 include(InstallRequiredSystemLibraries)
 
-# macOS 
-set(CMAKE_MACOSX_RPATH 1)
-set(CMAKE_INSTALL_RPATH "@loader_path")
+# unix
+cmake_print_variables(CMAKE_HOST_SYSTEM_NAME)
+set(CMAKE_MACOSX_RPATH 1)   
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
+    set(CMAKE_INSTALL_RPATH "\$ORIGIN")
+elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
+    set(CMAKE_INSTALL_RPATH "@loader_path")
+endif()
 
 sc_check_sc_path("${SC_PATH}")
 message(STATUS "Found SuperCollider: ${SC_PATH}")
@@ -67,7 +74,6 @@ endif()
 
 find_package(Torch REQUIRED) # find torch
 
-include(CMakePrintHelpers)
 # cmake_print_variables(TORCH_LIBRARIES)
 # cmake_print_variables(TORCH_INCLUDE_DIRS)
 # cmake_print_variables(TORCH_INSTALL_PREFIX)
