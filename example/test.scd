@@ -24,7 +24,6 @@ s.quit
 // https://play.forum.ircam.fr/rave-vst-api/get_available_models
 // https://play.forum.ircam.fr/rave-vst-api/get_model?model_name=
 
-
 // old API:
 (
 ~synth = {

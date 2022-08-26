@@ -88,6 +88,9 @@ set(RAVE_sc_files
 )
 set(RAVE_schelp_files
     HelpSource/Classes/RAVE.schelp
+    HelpSource/Classes/RAVEEncoder.schelp
+    HelpSource/Classes/RAVEDecoder.schelp
+    HelpSource/Classes/RAVEPrior.schelp
 )
 
 sc_add_server_plugin(

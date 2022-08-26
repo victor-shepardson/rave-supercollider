@@ -7,11 +7,11 @@ description::
 RAVE autoencoder plugin for SuperCollider. This class includes the RAVE encoder, decoder and prior models. For more fine-grained control, see the separate RAVEEncoder, RAVEDecoder and RAVEPrior UGens.
 
 note::
-must use server hardwareBufferSize=2048 for good performance.
+must use server hardwareBufferSize equal to the RAVE model (typically 2048) for good performance.
 ::
 
 note::
-must use server sampleRate=48000 for correct pitch.
+must use server sampleRate equal to the RAVE model (typically 48000) for correct pitch.
 ::
 
 note::
