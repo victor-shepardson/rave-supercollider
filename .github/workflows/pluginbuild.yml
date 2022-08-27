@@ -16,8 +16,8 @@ jobs:
           - name: macOS-x64
             os: macos-latest
 
-          # - name: Linux-x64
-            # os: ubuntu-latest
+          - name: Linux-x64
+            os: ubuntu-latest
 
           # - name: Windows-x64
           #   os: windows-2019
@@ -38,24 +38,24 @@ jobs:
         path: ${{ env.SC_PATH }}
         ref: main
 
-    # - name: get mamba (macOS)
-    #   if: runner.os == 'macOS'
-    #   uses: conda-incubator/setup-miniconda@v2
-    #   with:
-    #     miniforge-variant: Mambaforge
+    - name: get mamba (macOS)
+      if: runner.os == 'macOS'
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        miniforge-variant: Mambaforge
 
-    # - name: get torch (macOS)
-    #   if: runner.os == 'macOS'
-    #   run: |
-    #     mamba install pytorch-cpu=1.12 -c pytorch
-    #     $(conda info --base)/bin/python -c "import torch; from pathlib import Path; print(f'TORCH_PATH={Path(torch.__file__).parent}')" | tee -a $GITHUB_ENV
-
-    - name: get libtorch (macOS)
+    - name: get torch (macOS)
       if: runner.os == 'macOS'
       run: |
-        wget https://download.pytorch.org/libtorch/cpu/libtorch-macos-1.12.1.zip
-        unzip "libtorch-macos-1.12.1.zip"
-        echo TORCH_PATH=$(pwd)/libtorch | tee -a $GITHUB_ENV
+        mamba install pytorch=1.12 -c pytorch
+        $(conda info --base)/bin/python -c "import torch; from pathlib import Path; print(f'TORCH_PATH={Path(torch.__file__).parent}')" | tee -a $GITHUB_ENV
+
+    # - name: get libtorch (macOS)
+    #   if: runner.os == 'macOS'
+    #   run: |
+    #     wget https://download.pytorch.org/libtorch/cpu/libtorch-macos-1.12.1.zip
+    #     unzip "libtorch-macos-1.12.1.zip"
+    #     echo TORCH_PATH=$(pwd)/libtorch | tee -a $GITHUB_ENV
 
     - name: get clang (Linux)
       if: runner.os == 'Linux'
@@ -79,7 +79,7 @@ jobs:
     - name: Configure CMake
       shell: bash
       working-directory: ${{ env.BUILD_PATH }}
-      run: CXX=clang cmake .. -DCMAKE_BUILD_TYPE='Release' -DSC_PATH="$SC_PATH" -DCMAKE_INSTALL_PREFIX="$INSTALL_PATH" -DCMAKE_PREFIX_PATH="${TORCH_PATH};/usr/local" -DSUPERNOVA=OFF
+      run: CXX=clang cmake .. -DCMAKE_BUILD_TYPE='Release' -DSC_PATH="$SC_PATH" -DCMAKE_INSTALL_PREFIX="$INSTALL_PATH" -DCMAKE_PREFIX_PATH="${TORCH_PATH};/usr/local"
 
     - name: Build
       shell: bash
