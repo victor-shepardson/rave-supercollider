@@ -16,8 +16,8 @@ jobs:
           - name: macOS-x64
             os: macos-latest
 
-          - name: Linux-x64
-            os: ubuntu-latest
+          # - name: Linux-x64
+            # os: ubuntu-latest
 
           # - name: Windows-x64
           #   os: windows-2019
@@ -86,7 +86,7 @@ jobs:
       working-directory: ${{ env.BUILD_PATH }}
       env:
         CMAKE_BUILD_PARALLEL_LEVEL: 4
-      run: cmake --build . --config "Release" --target install
+      run: CXX=clang cmake --build . --config "Release" --target install
 
       # Gather all files in a zip
     - name: Zip up build (Unix)
