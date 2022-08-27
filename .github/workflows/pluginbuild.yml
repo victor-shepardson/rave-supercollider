@@ -16,8 +16,8 @@ jobs:
           - name: macOS-x64
             os: macos-latest
 
-          - name: Linux-x64
-            os: ubuntu-latest
+          # - name: Linux-x64
+            # os: ubuntu-latest
 
           # - name: Windows-x64
           #   os: windows-2019
@@ -61,7 +61,7 @@ jobs:
       if: runner.os == 'Linux'
       uses: KyleMayes/install-llvm-action@v1
       with:
-        version: "10.0"
+        version: "13.0"
 
     - name: get libtorch (Linux)
       if: runner.os == 'Linux'
@@ -79,7 +79,7 @@ jobs:
     - name: Configure CMake
       shell: bash
       working-directory: ${{ env.BUILD_PATH }}
-      run: CXX=clang cmake .. -DCMAKE_BUILD_TYPE='Release' -DSC_PATH="$SC_PATH" -DCMAKE_INSTALL_PREFIX="$INSTALL_PATH" -DCMAKE_PREFIX_PATH="${TORCH_PATH};/usr/local"
+      run: CXX=clang cmake .. -DCMAKE_BUILD_TYPE='Release' -DSC_PATH="$SC_PATH" -DCMAKE_INSTALL_PREFIX="$INSTALL_PATH" -DCMAKE_PREFIX_PATH="${TORCH_PATH};/usr/local" -DSUPERNOVA=OFF
 
     - name: Build
       shell: bash

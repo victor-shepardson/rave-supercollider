@@ -1,8 +1,11 @@
 (
-// Server.default.options.inDevice_("BlackHole 16ch");
-// Server.default.options.outDevice_("BlackHole 16ch");
-Server.default.options.inDevice_("Built-in Microph");
-Server.default.options.outDevice_("Built-in Output");
+Server.default.options.inDevice_("BlackHole 16ch");
+Server.default.options.outDevice_("BlackHole 16ch");
+// Server.default.options.inDevice_("Built-in Microph");
+// Server.default.options.outDevice_("Built-in Output");
+
+// Server.supernova;
+Server.scsynth;
 
 s.options.sampleRate = 48000; // the sample rate must match RAVE
 s.options.blockSize = 512;//16; // a low block size within scsynth is fine,
