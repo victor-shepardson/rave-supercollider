@@ -79,14 +79,14 @@ jobs:
     - name: Configure CMake
       shell: bash
       working-directory: ${{ env.BUILD_PATH }}
-      run: CXX=clang cmake .. -DCMAKE_BUILD_TYPE='Release' -DSC_PATH="$SC_PATH" -DCMAKE_INSTALL_PREFIX="$INSTALL_PATH" -DCMAKE_PREFIX_PATH="${TORCH_PATH};/usr/local"
+      run: cmake .. -DCMAKE_BUILD_TYPE='Release' -DSC_PATH="$SC_PATH" -DCMAKE_INSTALL_PREFIX="$INSTALL_PATH" -DCMAKE_PREFIX_PATH="${TORCH_PATH};/usr/local"
 
     - name: Build
       shell: bash
       working-directory: ${{ env.BUILD_PATH }}
       env:
         CMAKE_BUILD_PARALLEL_LEVEL: 4
-      run: CXX=clang cmake --build . --config "Release" --target install
+      run: cmake --build . --config "Release" --target install
 
       # Gather all files in a zip
     - name: Zip up build (Unix)
