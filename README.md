@@ -32,7 +32,7 @@ Note for Linux: you may need to set `CXX=clang` for the cmake commands (and have
 
 `path/to/supercollider` is the checked out SuperCollider source from https://github.com/supercollider/supercollider at the same commit as the version you are running -- see the version number and `git checkout` that tag. At the time of writing you need to build SC from source for native build on arm64 mac.
 
-`/path/to/libtorch` is the downloaded libtorch from https://pytorch.org/get-started/locally/ . Make sure to get the CPU version. At time of writing the download for macOS is x86_64 only. For arm64 mac, you can install pytorch for arm64 via conda, and then point to that; in my case it was `/Users/victor/mambaforge/pkgs/pytorch-1.12.0-py3.9_0/lib/python3.9/site-packages/torch`. After installing torch via python, you can do `python -c "import torch; from pathlib import Path; print(Path(torch.__file__).parent)"`.
+`/path/to/libtorch` is the downloaded libtorch from https://pytorch.org/get-started/locally/ . Make sure to get the CPU version. At time of writing the download for macOS is x86_64 only. For arm64 mac, you can install pytorch for arm64 using conda, and then point to that. After installing torch via python, you can do `python -c "import torch; from pathlib import Path; print(Path(torch.__file__).parent)"`. (for example in my case it was `/Users/victor/mambaforge/pkgs/pytorch-1.12.0-py3.9_0/lib/python3.9/site-packages/torch`)
 
 It's expected that the SuperCollider repo is cloned at `../supercollider` relative to this repo. If
 it's not: add the option `-DSC_PATH=/path/to/sc/source`.
