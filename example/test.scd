@@ -1,8 +1,8 @@
 (
-Server.default.options.inDevice_("BlackHole 16ch");
-Server.default.options.outDevice_("BlackHole 16ch");
-// Server.default.options.inDevice_("Built-in Microph");
-// Server.default.options.outDevice_("Built-in Output");
+// Server.default.options.inDevice_("BlackHole 16ch");
+// Server.default.options.outDevice_("BlackHole 16ch");
+Server.default.options.inDevice_("Built-in Microph");
+Server.default.options.outDevice_("Built-in Output");
 
 // Server.supernova;
 Server.scsynth;
@@ -19,8 +19,8 @@ s.waitForBoot{
 
 s.quit
 
-// if there are code signing problems:
-("xattr -d -r com.apple.quarantine"+Platform.userExtensionDir.quote++"/rave-supercollider/").runInTerminal
+// if macOS complains about unknown binaries:
+("xattr -d -r com.apple.quarantine"+Platform.userExtensionDir.quote++"/RAVE/").runInTerminal
 
 
 // some checkpoints:
@@ -33,10 +33,11 @@ s.quit
 
     var out = Limiter.ar(
         RAVE.new(
-			"/Users/victor/Downloads/rave_vctk-low-latency-hilr-lokld-vae-0215.ts",
-			// "/Users/victor/rave-models/speech/speech_realtime.ts",
-			// "/Users/victor/Library/Application\ Support/Qosmo/Neutone/models/83ecd7d0f50c23bcb0f2d3ec12872dd9", // does not work -- neutone replaces `forward` i think
-            SoundIn.ar(0), // input for timbr==e transfer
+			// "/Users/victor/Downloads/epoch=176.ckpt",
+			// "/Users/victor/Downloads/rave_vctk-low-latency-hilr-lokld-vae-0215.ts",
+			"/Users/victor/rave-models/speech/speech_realtime.ts",
+			// "/Users/victor/Library/Application\ Support/Qosmo/Neutone/models/83ecd7d0f50c23bcb0f2d3ec12872dd9",
+            SoundIn.ar(0), // input for timbre transfer
             \prior.kr(0), // 0 for timbre transfer, 1 for generation
             \temp.kr(1) // temperature of generation
         )

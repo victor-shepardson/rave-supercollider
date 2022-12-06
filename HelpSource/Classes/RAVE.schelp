@@ -18,6 +18,13 @@ note::
 Synth creation will glitch the audio the first time a particular RAVE file is used, as the  model is loaded on the audio thread.
 ::
 
+note::
+code::
+// if macOS complains about unknown binaries:
+("xattr -d -r com.apple.quarantine"+Platform.userExtensionDir.quote++"/RAVE/").runInTerminal
+::
+::
+
 method::new
 
 argument::filename

@@ -213,9 +213,10 @@ public:
     static std::map<std::string, RAVEModel* > models;
 
     float * inBuffer; // allocated in subclass constructor
-    size_t bufPtr;
+    size_t inIndex;
 
     float * outBuffer; // allocated in subclass constructor
+    size_t outIndex;
 
     bool first_block_done;
     int filename_length;

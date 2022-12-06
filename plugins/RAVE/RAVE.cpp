@@ -11,7 +11,8 @@ namespace RAVE {
 auto RAVEBase::models = std::map<std::string, RAVEModel* >();
 
 RAVEBase::RAVEBase() {
-    bufPtr = 0;
+    inIndex = 0;
+    outIndex = 0;
     first_block_done = false;
 
     filename_length = in0(0);
@@ -110,9 +111,9 @@ void RAVE::next(int nSamples) {
             continue;
         }
 
-        inBuffer[bufPtr] = input[i];
-        bufPtr++;
-        if(bufPtr == model->block_size){
+        inBuffer[inIndex] = input[i];
+        inIndex++;
+        if(inIndex == model->block_size){
             //process block
             if(use_prior && model->prior_temp_size>0){
                 model->prior_decode(temperature, outBuffer);
@@ -120,12 +121,18 @@ void RAVE::next(int nSamples) {
                 model->encode_decode(inBuffer, outBuffer);
             }
 
-            bufPtr = 0;
+            inIndex = 0;
             first_block_done = true;
         }
+    }
 
+    for (int i = 0; i < nSamples; ++i) {
         if (first_block_done){
-            output[i] = outBuffer[bufPtr];
+            if(outIndex == model->block_size){
+                outIndex = 0;
+            }
+            output[i] = outBuffer[outIndex];
+            outIndex++;
         }
         else {
             output[i] = 0;
@@ -144,13 +151,14 @@ void RAVEPrior::next(int nSamples) {
 
     for (int i=0; i<fullBufferSize(); ++i) {
         // just count samples, there is no audio input
-        bufPtr++;
-        if(bufPtr == model->block_size){
+        if(outIndex == 0){
             //process block
             model->prior(temperature, outBuffer);
-
-            bufPtr = 0;
             first_block_done = true;
+        }
+        outIndex++;
+        if(outIndex == model->block_size){
+            outIndex = 0;
         }
     }
 
@@ -175,13 +183,13 @@ void RAVEEncoder::next(int nSamples) {
 
     for (int i = 0; i < fullBufferSize(); ++i) {
 
-        inBuffer[bufPtr] = input[i];
-        bufPtr++;
-        if(bufPtr == model->block_size){
+        inBuffer[inIndex] = input[i];
+        inIndex++;
+        if(inIndex == model->block_size){
             //process block
             model->encode(inBuffer, outBuffer);
 
-            bufPtr = 0;
+            inIndex = 0;
             first_block_done = true;
         }
     }
@@ -206,8 +214,7 @@ void RAVEDecoder::next(int nSamples) {
             continue;
         }
 
-        bufPtr++;
-        if(bufPtr == model->block_size){
+        if(inIndex == 0){
             // read only up to latent_size inputs,
             // or zero any extra latents if there are fewer inputs
             for (int j=0; j < model->latent_size; ++j){
@@ -219,13 +226,21 @@ void RAVEDecoder::next(int nSamples) {
             }
             //process block
             model->decode(inBuffer, outBuffer);
-
-            bufPtr = 0;
             first_block_done = true;
         }
+        inIndex++;
+        if(inIndex == model->block_size){
+            inIndex = 0;
+        }
+    }
 
+    for (int i = 0; i < nSamples; ++i) {
         if (first_block_done){
-            output[i] = outBuffer[bufPtr];
+            output[i] = outBuffer[outIndex];
+            outIndex++;
+            if(outIndex == model->block_size){
+                outIndex = 0;
+            }
         }
         else {
             output[i] = 0;
