@@ -208,15 +208,16 @@ public:
     ~RAVEBase();
 
     void write_zeros_kr();
+    void write_zeros_ar(int i);
 
     RAVEModel * model;
     static std::map<std::string, RAVEModel* > models;
 
     float * inBuffer; // allocated in subclass constructor
-    size_t inIndex;
+    size_t inIdx;
 
     float * outBuffer; // allocated in subclass constructor
-    size_t outIndex;
+    size_t outIdx;
 
     bool first_block_done;
     int filename_length;

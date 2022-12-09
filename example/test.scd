@@ -1,8 +1,8 @@
 (
 // Server.default.options.inDevice_("BlackHole 16ch");
 // Server.default.options.outDevice_("BlackHole 16ch");
-Server.default.options.inDevice_("Built-in Microph");
-Server.default.options.outDevice_("Built-in Output");
+Server.default.options.inDevice_("MacBook Pro Microphone");
+Server.default.options.outDevice_("MacBook Pro Speakers");
 
 // Server.supernova;
 Server.scsynth;
@@ -37,6 +37,7 @@ s.quit
 			// "/Users/victor/Downloads/rave_vctk-low-latency-hilr-lokld-vae-0215.ts",
 			"/Users/victor/rave-models/speech/speech_realtime.ts",
 			// "/Users/victor/Library/Application\ Support/Qosmo/Neutone/models/83ecd7d0f50c23bcb0f2d3ec12872dd9",
+			// "/Users/victor/interactive-voice/RAVE/rave_cropped.ts",
             SoundIn.ar(0), // input for timbre transfer
             \prior.kr(0), // 0 for timbre transfer, 1 for generation
             \temp.kr(1) // temperature of generation
@@ -59,7 +60,8 @@ s.quit
 	// var in = Blip.ar(1, 150)*Pulse.ar(200)/2;
 	var in = Saw.ar(-1) * Pulse.ar(200)/2;
     var out = RAVE.new(
-		"/Users/victor/Downloads/rave_vctk-low-latency-hilr-lokld-vae-0215.ts",
+		// "/Users/victor/Downloads/rave_vctk-low-latency-hilr-lokld-vae-0215.ts",
+		"/Users/victor/interactive-voice/RAVE/rave_cropped.ts",
 		in, // input for timbre transfer
 		\prior.kr(0), // 0 for timbre transfer, 1 for generation
 		\temp.kr(1) // temperature of generation
@@ -77,6 +79,7 @@ s.quit
 ~synth = {
 	var z = RAVEEncoder.new(
 		"/Users/victor/rave-models/speech/speech_realtime.ts", 8, // filename, latent size
+		// "/Users/victor/interactive-voice/RAVE/rave_cropped.ts", 8,
 		SoundIn.ar(0),// input for latent embedding
 	);
 	z.poll(2,);
@@ -95,8 +98,9 @@ s.quit
 ~synth = {
 	var z = RAVEEncoder.new(
 		// "/Users/victor/rave-models/animal2rt_3M_sc.ts", 4,
-		"/Users/victor/rave-models/speech/speech_realtime.ts", 8, // filename, latent size
+		// "/Users/victor/rave-models/speech/speech_realtime.ts", 8, // filename, latent size
 		// "/Users/victor/Library/Application\ Support/Qosmo/Neutone/models/83ecd7d0f50c23bcb0f2d3ec12872dd9", 8,
+		"/Users/victor/interactive-voice/RAVE/rave_cropped.ts", 36,
 		SoundIn.ar(0),// input for latent embedding
 		// SoundIn.ar(0)!2,// input for latent embedding
 	);
@@ -105,10 +109,11 @@ s.quit
 	Limiter.ar(
 		RAVEDecoder.new(
 			// "/Users/victor/rave-models/animal2rt_3M_sc.ts",
-			"/Users/victor/rave-models/speech/speech_realtime.ts",
+			// "/Users/victor/rave-models/speech/speech_realtime.ts",
 			// "/Users/victor/Library/Application\ Support/Qosmo/Neutone/models/83ecd7d0f50c23bcb0f2d3ec12872dd9",
-			z
-			// 0-z.shift(1) // latent inputs
+			"/Users/victor/interactive-voice/RAVE/rave_cropped.ts",
+			// z
+			[z[0]]++(0-z[1..]) // latent inputs
 		)!2
 	);
 }.play(outbus:~bus);
@@ -125,15 +130,16 @@ s.quit
 ~synth = {
 	var z = RAVEPrior.new(
 		"/Users/victor/rave-models/speech/speech_realtime.ts", 8, // filename, latent size
-		DC.kr(0.7), // prior temperature
+		DC.kr(0.2), // prior temperature
 	);
 	z.poll(2);
 	// DC.ar(0)!2;
 	Limiter.ar(
         RAVEDecoder.new(
 			// "/Users/victor/rave-models/speech/speech_realtime.ts",
-			"/Users/victor/rave-models/cleansing/2M46_cleansing_small_sc.ts",
-			z))!2 // latent inputs
+			// "/Users/victor/rave-models/cleansing/2M46_cleansing_small_sc.ts",
+			"/Users/victor/interactive-voice/RAVE/rave_cropped.ts",
+			z*2))!2 // latent inputs
 	// [z, z+z.collect{PinkNoise.kr*2-1/3}])) // pseudo-stereo
     ;
 }.play(outbus:~bus);
@@ -145,16 +151,18 @@ s.quit
 ~synth = {
 
 	// var z = SinOsc.kr(8.collect{ |i| 1.5**(0-i) * 1});
-	var z = 8.collect{ |i| ("latent_"++i).asSymbol.kr};
+	var z = 36.collect{ |i| ("latent_"++i).asSymbol.kr};
 	// var z = [0,0,0,0,0,0,0,SinOsc.kr(0.5)*3];
 	Limiter.ar(
         RAVEDecoder.new(
-			"/Users/victor/rave-models/speech/speech_realtime.ts",
+			// "/Users/victor/rave-models/speech/speech_realtime.ts",
 			// "/Users/victor/rave-models/speech/speech_realtime💋.ts", //test unicode
 			// "/Users/victor/rave-models/wheel/wheel.ts",
 			// "/Users/victor/rave-models/animal2rt_3M_sc.ts",
 			// "/Users/victor/rave-models/blonk/blonk_vae_only_sc.ts",
 			// "/Users/victor/rave-models/blonk/blonk_2300865_sc.ts",
+			"/Users/victor/interactive-voice/RAVE/rave_cropped.ts",
+
             z,// latent inputs
         )
     )!2;
@@ -176,7 +184,32 @@ m = 0.1;
 ~set.(\latent_5, {SinOsc.kr(r/13)*2});
 ~set.(\latent_6, {SinOsc.kr(r/17)*2});
 ~set.(\latent_7, {SinOsc.kr(r/19)*2});
+
 )
+
+
+(
+r = 48000/2048;
+36.do{ |i|
+	var synth = {SinOsc.kr(r/i.nthPrime/(i>0).if{64}{2})*2.5};
+	var key = ("latent_"++i).asSymbol.postln;
+	~set.(key, synth);
+}
+)
+
+(
+n = 36;
+r = 48000/2048;
+~set.(\latent_0, {SinOsc.kr(r/4)*3});
+(n-1).do{ |i|
+	var synth = {SinOsc.kr(r/(n-i).nthPrime/8)*2.5};
+	var key = ("latent_"++(i+1)).asSymbol.postln;
+	~set.(key, synth);
+}
+)
+
+
+36.collect(_.nthPrime.asFloat).product * 64 / r / 60 / 60 / 24 / 365
 
 ~synth.free
 
