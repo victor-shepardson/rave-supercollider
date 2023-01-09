@@ -8,7 +8,7 @@ static InterfaceTable* ft;
 
 namespace RAVE {
 
-auto RAVEBase::models = std::map<std::string, RAVEModel* >();
+// auto RAVEBase::models = std::map<std::string, RAVEModel* >();
 
 RAVEBase::RAVEBase() {
     inIdx = 0;
@@ -23,16 +23,16 @@ RAVEBase::RAVEBase() {
         path[i] = static_cast<char>(in0(i+1));
     }
 
-    auto kv = models.find(path);
-    if (kv==models.end()){
+    // auto kv = models.find(path);
+    // if (kv==models.end()){
         model = new RAVEModel();
         std::cout << "loading: \"" << path << "\"" << std::endl;
         model->load(path);
-        models.insert({path, model});
-    } else {
-        model = kv->second;
-        std::cout << "found \"" << path << "\" already loaded" << std::endl;
-    }
+        // models.insert({path, model});
+    // } else {
+        // model = kv->second;
+        // std::cout << "found \"" << path << "\" already loaded" << std::endl;
+    // }
 }
 
 RAVE::RAVE() : RAVEBase(){
