@@ -14,6 +14,8 @@ s.options.blockSize = 512;//16; // a low block size within scsynth is fine,
 s.options.hardwareBufferSize = 2048;//512; // but the hardware buffer size ought to match RAVE
 // (to avoid dropouts). It *can* be lower for slightly less latency, at a high peak cpu cost
 
+"OMP_NUM_THREADS".setenv("1"); // this saves a lot of CPU on arm macs, at least
+
 s.waitForBoot{
 	~bus = Bus.new(index:0, numChannels:2);
 }
