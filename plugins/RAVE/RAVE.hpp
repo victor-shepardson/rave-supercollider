@@ -19,7 +19,7 @@ struct RAVEModel {
 
   torch::jit::Module model;
 
-  int sr;
+  int sr; 
   int block_size;
   int z_per_second;
   int prior_temp_size;
@@ -64,7 +64,7 @@ struct RAVEModel {
       this->model = this->model.attr("model").toModule();
     }
 
-    this->block_size = this->latent_size = this->sr = this->prior_temp_size = -1;
+    this->z_per_second = this->block_size = this->latent_size = this->sr = this->prior_temp_size = -1;
 
     auto named_buffers = this->model.named_buffers();
     for (auto const& i: named_buffers) {
@@ -98,11 +98,9 @@ struct RAVEModel {
             this->prior_temp_size = (int) i.value.sizes()[1];
         }
     } 
-    this->z_per_second = this->sr / this->block_size;
 
     if ((this->block_size<0) || 
-        (this->latent_size<0) || 
-        (this->sr<0)){
+        (this->latent_size<0)){
       std::cout << "model load failed" << std::endl;
       return;
     }
@@ -112,7 +110,11 @@ struct RAVEModel {
 
     std::cout << "\tblock size: " << this->block_size << std::endl;
     std::cout << "\tlatent size: " << this->latent_size << std::endl;
-    std::cout << "\tsample rate: " << this->sr << std::endl;
+
+    if (this->sr > 0){
+      this->z_per_second = this->sr / this->block_size;
+      std::cout << "\tsample rate: " << this->sr << std::endl;
+    }
 
     c10::InferenceMode guard;
     inputs_rave.clear();
