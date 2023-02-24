@@ -92,7 +92,7 @@ struct RAVEModel {
             // std::cout << i.value << std::endl;
             this->sr = i.value.item<int>();
         }
-        if (i.name == "_prior.previous_step") {
+        if (i.name == "_prior.previous_step" || i.name == "last_z") {
             // std::cout<<i.name<<std::endl;
             std::cout << i.value.sizes()[1] << std::endl;
             this->prior_temp_size = (int) i.value.sizes()[1];
