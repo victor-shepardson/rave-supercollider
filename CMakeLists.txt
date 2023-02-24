@@ -38,7 +38,7 @@ if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
     # set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
     set(CMAKE_INSTALL_RPATH "$ORIGIN/ignore")
 elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
-    set(CMAKE_INSTALL_RPATH "@loader_path")
+    set(CMAKE_INSTALL_RPATH "@loader_path/ignore")
 endif()
 
 sc_check_sc_path("${SC_PATH}")
