@@ -17,7 +17,7 @@ jobs:
             os: macos-latest
 
           - name: Linux-x64
-            os: ubuntu-latest
+            os: ubuntu-20.04
 
           # - name: Windows-x64
           #   os: windows-2019
