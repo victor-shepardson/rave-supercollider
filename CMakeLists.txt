@@ -30,12 +30,13 @@ include(InstallRequiredSystemLibraries)
 
 # unix
 cmake_print_variables(CMAKE_HOST_SYSTEM_NAME)
-set(CMAKE_MACOSX_RPATH 1)   
+set(CMAKE_MACOSX_RPATH 1)
+# set(CMAKE_SKIP_BUILD_RPATH FALSE)
+# set(CMAKE_BUILD_RPATH_USE_ORIGIN TRUE)   
 if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
     # set(CMAKE_INSTALL_RPATH "\$ORIGIN")
-    set(CMAKE_SKIP_BUILD_RPATH FALSE)
-    set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-    set(CMAKE_INSTALL_RPATH "$\{ORIGIN\}")
+    # set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+    set(CMAKE_INSTALL_RPATH "$\{ORIGIN\}/ignore")
 elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
     set(CMAKE_INSTALL_RPATH "@loader_path")
 endif()
@@ -83,7 +84,7 @@ find_package(Torch REQUIRED) # find torch
 file(GLOB TORCH_DLLS "${TORCH_INSTALL_PREFIX}/lib/*[.dylib|.so|.so.1|.dll]")
 # cmake_print_variables(TORCH_DLLS)
 
-install(FILES ${TORCH_DLLS} DESTINATION "RAVE")
+install(FILES ${TORCH_DLLS} DESTINATION "RAVE/ignore")
 
 ####################################################################################################
 # Begin target RAVE
