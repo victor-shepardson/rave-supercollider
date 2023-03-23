@@ -8,9 +8,7 @@ RAVE autoencoder (https://github.com/acids-ircam/RAVE) UGens for SuperCollider.
 - SuperCollider source code
 - libtorch distribution C++ from pytorch.org
 
-scsynth plugin tested on macOS 12.4 (arm64) native and via Rosetta
-
-supernova plugin untested
+scsynth and supernova plugins tested on macOS 12.4 (arm64) native and via Rosetta
 
 ### Building
 
