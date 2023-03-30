@@ -91,6 +91,7 @@ file(GLOB TORCH_EXTRA_DLLS
     ${TORCH_INSTALL_PREFIX}/../../../libmkl_intel_thread*
     ${TORCH_INSTALL_PREFIX}/../../../libmkl_intel_lp64*
     ${TORCH_INSTALL_PREFIX}/../../../libmkl_core*
+    ${TORCH_INSTALL_PREFIX}/../../../libmkl_avx2*
     ${TORCH_INSTALL_PREFIX}/../../../libiomp*
     )
 cmake_print_variables(TORCH_DLLS)
