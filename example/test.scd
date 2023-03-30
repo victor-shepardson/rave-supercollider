@@ -37,7 +37,7 @@ s.quit
 ~synth = {
     var out = Limiter.ar(
         RAVE.new(
-			"/path/to/my/rave/model.ts",
+            "/path/to/my/rave/model.ts",
             SoundIn.ar(0), // input for timbre transfer
             \prior.kr(0), // 0 for timbre transfer, 1 for generation
             \temp.kr(1) // temperature of generation

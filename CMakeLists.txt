@@ -78,13 +78,26 @@ endif()
 
 find_package(Torch REQUIRED) # find torch
 
-# cmake_print_variables(TORCH_LIBRARIES)
+cmake_print_variables(TORCH_LIBRARIES)
 # cmake_print_variables(TORCH_INCLUDE_DIRS)
-# cmake_print_variables(TORCH_INSTALL_PREFIX)
-file(GLOB TORCH_DLLS "${TORCH_INSTALL_PREFIX}/lib/*[.dylib|.so|.so.1|.dll]")
-# cmake_print_variables(TORCH_DLLS)
+cmake_print_variables(TORCH_INSTALL_PREFIX)
+file(GLOB TORCH_DLLS 
+    ${TORCH_INSTALL_PREFIX}/lib/*.dylib
+    ${TORCH_INSTALL_PREFIX}/lib/*.so
+    ${TORCH_INSTALL_PREFIX}/lib/*.so.[1-9]
+    ${TORCH_INSTALL_PREFIX}/lib/*.dll
+    )
+file(GLOB TORCH_EXTRA_DLLS 
+    ${TORCH_INSTALL_PREFIX}/../../../libmkl_intel_thread*
+    ${TORCH_INSTALL_PREFIX}/../../../libmkl_intel_lp64*
+    ${TORCH_INSTALL_PREFIX}/../../../libmkl_core*
+    ${TORCH_INSTALL_PREFIX}/../../../libiomp*
+    )
+cmake_print_variables(TORCH_DLLS)
+cmake_print_variables(TORCH_EXTRA_DLLS)
 
 install(FILES ${TORCH_DLLS} DESTINATION "RAVE/ignore")
+install(FILES ${TORCH_EXTRA_DLLS} DESTINATION "RAVE/ignore")
 
 ####################################################################################################
 # Begin target RAVE
