@@ -78,9 +78,10 @@ endif()
 
 find_package(Torch REQUIRED) # find torch
 
-# cmake_print_variables(TORCH_LIBRARIES)
-# cmake_print_variables(TORCH_INCLUDE_DIRS)
-# cmake_print_variables(TORCH_INSTALL_PREFIX)
+cmake_print_variables(TORCH_LIBRARIES)
+cmake_print_variables(TORCH_INCLUDE_DIRS)
+cmake_print_variables(TORCH_INSTALL_PREFIX)
+
 file(GLOB TORCH_DLLS LIST_DIRECTORIES FALSE "${TORCH_INSTALL_PREFIX}/lib/*[.dylib|.so|.so.1|.dll]")
 # cmake_print_variables(TORCH_DLLS)
 
