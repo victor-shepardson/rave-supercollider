@@ -23,24 +23,20 @@ RAVEBase::RAVEBase() {
         path[i] = static_cast<char>(in0(i+1));
     }
 
-    // auto kv = models.find(path);
-    // if (kv==models.end()){
-        model = new RAVEModel();
-        std::cout << "loading: \"" << path << "\"" << std::endl;
-        model->load(path);
-        // models.insert({path, model});
-    // } else {
-        // model = kv->second;
-        // std::cout << "found \"" << path << "\" already loaded" << std::endl;
-    // }
+    model = new RAVEModel();
+    std::cout << "loading: \"" << path << "\"" << std::endl;
+    // model->load(path);
+    load_thread = std::make_unique<std::thread>(&RAVEModel::load, model, path);
 }
 
-RAVE::RAVE() : RAVEBase(){
+void RAVE::make_buffers(){
     inBuffer = (float*)RTAlloc(this->mWorld, model->block_size * sizeof(float));
     outBuffer = (float*)RTAlloc(this->mWorld, model->block_size * sizeof(float));
-    mCalcFunc = make_calc_function<RAVE, &RAVE::next>();
-
     this->ugen_outputs = 1;
+}
+RAVE::RAVE() : RAVEBase(){
+    if (!load_thread) make_buffers();
+    mCalcFunc = make_calc_function<RAVE, &RAVE::next>();
 }
 
 RAVEPrior::RAVEPrior() : RAVEBase(){
@@ -110,6 +106,14 @@ void RAVE::next(int nSamples) {
     const float temperature = in0(filename_length+3);
 
     float* output = out(0);
+
+    if (!model->loaded){
+        return;
+    }
+    else if (load_thread && load_thread->joinable()){
+        load_thread->join();
+        make_buffers();
+    }
 
     int model_block = model->block_size;
     int host_block = nSamples;

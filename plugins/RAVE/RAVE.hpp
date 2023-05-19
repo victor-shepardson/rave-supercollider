@@ -24,7 +24,7 @@ struct RAVEModel {
   int z_per_second;
   int prior_temp_size;
   int latent_size;
-  bool loaded;
+  std::atomic_bool loaded;
     
   std::vector<torch::jit::IValue> inputs_rave;
 
@@ -226,12 +226,14 @@ public:
     int ugen_inputs;
     int ugen_outputs;
 
+    std::unique_ptr<std::thread> load_thread;
 };
 
 class RAVE : public RAVEBase {
   public:
     RAVE();
     void next(int nSamples);
+    void make_buffers();
 };
 class RAVEEncoder : public RAVEBase {
   public:
