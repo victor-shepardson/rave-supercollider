@@ -120,6 +120,9 @@ struct RAVEModel {
     inputs_rave.clear();
     inputs_rave.push_back(torch::ones({1,1,block_size}));
 
+    //warmup
+    this->model(inputs_rave);
+
     this->loaded = true;
   }
 
@@ -239,17 +242,20 @@ class RAVEEncoder : public RAVEBase {
   public:
     RAVEEncoder();
     void next(int nSamples);
+    void make_buffers();
 };
 class RAVEDecoder : public RAVEBase {
   public:
     RAVEDecoder();
     size_t ugen_inputs;
     void next(int nSamples);
+    void make_buffers();
 };
 class RAVEPrior: public RAVEBase {
   public:
     RAVEPrior();
     void next(int nSamples);
+    void make_buffers();
 };
 
 } // namespace RAVE
