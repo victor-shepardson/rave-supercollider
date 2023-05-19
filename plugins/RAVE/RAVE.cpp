@@ -23,60 +23,52 @@ RAVEBase::RAVEBase() {
         path[i] = static_cast<char>(in0(i+1));
     }
 
-    // auto kv = models.find(path);
-    // if (kv==models.end()){
-        model = new RAVEModel();
-        std::cout << "loading: \"" << path << "\"" << std::endl;
-        model->load(path);
-        // models.insert({path, model});
-    // } else {
-        // model = kv->second;
-        // std::cout << "found \"" << path << "\" already loaded" << std::endl;
-    // }
+    model = new RAVEModel();
+    std::cout << "loading: \"" << path << "\"" << std::endl;
+    // model->load(path);
+    this->compute_thread = std::make_unique<std::thread>(&RAVEModel::load, *model, path);
+
 }
 
-RAVE::RAVE() : RAVEBase(){
+void RAVE::make_buffers() {
     inBuffer = (float*)RTAlloc(this->mWorld, model->block_size * sizeof(float));
     outBuffer = (float*)RTAlloc(this->mWorld, model->block_size * sizeof(float));
-    mCalcFunc = make_calc_function<RAVE, &RAVE::next>();
-
     this->ugen_outputs = 1;
 }
+RAVE::RAVE() : RAVEBase(){
+    mCalcFunc = make_calc_function<RAVE, &RAVE::next>();
+}
 
-RAVEPrior::RAVEPrior() : RAVEBase(){
+void RAVEPrior::make_buffers(){
     // currently unused but is freed in superclass destructor
     inBuffer = (float*)RTAlloc(this->mWorld, model->latent_size * sizeof(float));
     outBuffer = (float*)RTAlloc(this->mWorld, model->latent_size * sizeof(float));
-    mCalcFunc = make_calc_function<RAVEPrior, &RAVEPrior::next>();
 
     this->ugen_outputs = in0(filename_length+1);
     if (ugen_outputs != model->latent_size){
         std::cout << "WARNING: UGen outputs (" << ugen_outputs << ") do not match number of latent dimensions in model (" << model->latent_size << ")" << std::endl;
-    }
+    }   
+}
+RAVEPrior::RAVEPrior() : RAVEBase(){
+    mCalcFunc = make_calc_function<RAVEPrior, &RAVEPrior::next>();
 }
 
-RAVEEncoder::RAVEEncoder() : RAVEBase(){
+void RAVEEncoder::make_buffers(){
     inBuffer = (float*)RTAlloc(this->mWorld, model->block_size * sizeof(float));
     outBuffer = (float*)RTAlloc(this->mWorld, model->latent_size * sizeof(float));
-    mCalcFunc = make_calc_function<RAVEEncoder, &RAVEEncoder::next>();
-
     this->ugen_outputs = in0(filename_length+1);
     if (ugen_outputs != model->latent_size){
         std::cout << "WARNING: UGen outputs (" << ugen_outputs << ") do not match number of latent dimensions in model (" << model->latent_size << ")" << std::endl;
-    }
-
-    // std::cout << 
-        // "RAVEEncoder latent size: " << model->latent_size << 
-        // "; creating " << model->latent_size << " outputs" << std::endl;
+    }   
+}
+RAVEEncoder::RAVEEncoder() : RAVEBase(){
+    mCalcFunc = make_calc_function<RAVEEncoder, &RAVEEncoder::next>();
 }
 
-RAVEDecoder::RAVEDecoder() : RAVEBase(){
+void RAVEDecoder::make_buffers(){
     inBuffer = (float*)RTAlloc(this->mWorld, model->latent_size * sizeof(float));
     outBuffer = (float*)RTAlloc(this->mWorld, model->block_size * sizeof(float));
-    mCalcFunc = make_calc_function<RAVEDecoder, &RAVEDecoder::next>();
-
     // filename len, *chars, inputs len, *inputs
-
     // number of inputs provided in synthdef
     this->ugen_inputs = in0(filename_length+1);
     this->ugen_outputs = 1;
@@ -84,6 +76,9 @@ RAVEDecoder::RAVEDecoder() : RAVEBase(){
     std::cout << 
         "RAVEDecoder latent size: " << model->latent_size << 
         "; found " << ugen_inputs << " inputs" << std::endl;
+}
+RAVEDecoder::RAVEDecoder() : RAVEBase(){
+    mCalcFunc = make_calc_function<RAVEDecoder, &RAVEDecoder::next>();
 }
 
 RAVEBase::~RAVEBase() {
@@ -108,8 +103,15 @@ void RAVE::next(int nSamples) {
     const float* input = in(filename_length+1);
     const float use_prior = in0(filename_length+2);
     const float temperature = in0(filename_length+3);
-
     float* output = out(0);
+
+    if(!model->loaded){
+        return;
+    }
+    else if(compute_thread->joinable()){
+        compute_thread->join();
+        make_buffers();
+    }
 
     int model_block = model->block_size;
     int host_block = nSamples;
@@ -134,13 +136,14 @@ void RAVE::next(int nSamples) {
                     model->prior_decode(temperature, outBuffer);
                 } else {
                     model->encode_decode(inBuffer, outBuffer);
-                }                outIdx = inIdx = 0;
+                }                
+                outIdx = inIdx = 0;
                 first_block_done = true;
             }
         }
 
         for (int i = 0; i < min_block; ++i) {
-            if (model->loaded && first_block_done){
+            if (first_block_done){
                 if (outIdx >= model_block) {
                     std::cout<<"indexing error"<<std::endl;
                     outIdx = 0;
@@ -159,7 +162,16 @@ void RAVE::next(int nSamples) {
 void RAVEPrior::next(int nSamples) {
     const float temperature = in0(filename_length+2);
 
-    if (!model->loaded || model->prior_temp_size<=0) {
+    if (!model->loaded) {
+        write_zeros_kr();
+        return;
+    }
+    else if(compute_thread->joinable()){
+        compute_thread->join();
+        make_buffers();
+    }
+
+    if (model->prior_temp_size<=0) {
         write_zeros_kr();
         return;
     }
@@ -197,6 +209,10 @@ void RAVEEncoder::next(int nSamples) {
     if (!model->loaded) {
         write_zeros_kr();
         return;
+    }
+    else if(compute_thread->joinable()){
+        compute_thread->join();
+        make_buffers();
     }
 
     int model_block = model->block_size;
@@ -242,6 +258,10 @@ void RAVEDecoder::next(int nSamples) {
             write_zeros_ar(i);
         }
         return;
+    }
+    else if(compute_thread->joinable()){
+        compute_thread->join();
+        make_buffers();
     }
 
     // read control-rate inputs once per frame

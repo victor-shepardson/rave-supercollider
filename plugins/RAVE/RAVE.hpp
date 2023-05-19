@@ -212,6 +212,8 @@ public:
     void write_zeros_kr();
     void write_zeros_ar(int i);
 
+    virtual void make_buffers() = 0;
+
     RAVEModel * model;
     static std::map<std::string, RAVEModel* > models;
 
@@ -226,28 +228,34 @@ public:
     int ugen_inputs;
     int ugen_outputs;
 
+    std::unique_ptr<std::thread> compute_thread;
+
 };
 
 class RAVE : public RAVEBase {
   public:
     RAVE();
     void next(int nSamples);
+    void make_buffers();
 };
 class RAVEEncoder : public RAVEBase {
   public:
     RAVEEncoder();
     void next(int nSamples);
+    void make_buffers();
 };
 class RAVEDecoder : public RAVEBase {
   public:
     RAVEDecoder();
     size_t ugen_inputs;
     void next(int nSamples);
+    void make_buffers();
 };
 class RAVEPrior: public RAVEBase {
   public:
     RAVEPrior();
     void next(int nSamples);
+    void make_buffers();
 };
 
 } // namespace RAVE
