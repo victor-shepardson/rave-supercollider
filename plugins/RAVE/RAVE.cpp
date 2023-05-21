@@ -29,6 +29,142 @@ RAVEBase::RAVEBase() {
     load_thread = std::make_unique<std::thread>(&RAVEModel::load, model, path);
 }
 
+RAVEBase::~RAVEBase() {
+    if (load_thread && load_thread->joinable()) {
+        compute_thread->join();
+    }
+    if (compute_thread && compute_thread->joinable()) {
+        compute_thread->join();
+    }
+    RTFree(this->mWorld, inBuffer);
+    RTFree(this->mWorld, outBuffer);
+}
+
+void RAVEBase::write_zeros_kr() {
+    // std::cout<<"write zeros"<<std::endl;
+    for (int j=0; j < this->ugen_outputs; ++j){
+        out0(j) = 0;
+    }
+}
+void RAVEBase::write_zeros_ar(int i) {
+    // std::cout<<"write zeros"<<std::endl;
+    for (int j=0; j < this->ugen_outputs; ++j){
+        out(j)[i] = 0;
+    }
+}
+
+
+void AsyncRAVE::make_buffers(){
+    // this gets called when after model loading is done
+    // and before processing starts
+    inBuffer = (float*)RTAlloc(mWorld, model->block_size * sizeof(float));
+    outBuffer = (float*)RTAlloc(mWorld, model->block_size * sizeof(float));
+    res_in = Resampler(mRate->mSampleRate, model->sr, 3);
+    res_out = Resampler(model->sr, mRate->mSampleRate, 3);
+}
+AsyncRAVE::AsyncRAVE() : RAVEBase(){
+    // TODO: default should be block_size - 1
+    m_processing_latency = 2047;
+    m_internal_samples = 0;
+    ugen_outputs = 1;
+    if (!load_thread) make_buffers();
+    mCalcFunc = make_calc_function<AsyncRAVE, &AsyncRAVE::next>();
+}
+
+void AsyncRAVE::next(int nSamples) {
+    const float* input = in(filename_length+1);
+    const float use_prior = in0(filename_length+2);
+    const float temperature = in0(filename_length+3);
+
+    float* output = out(0);
+
+    if (!model->loaded){
+        for (int i=0; i<nSamples; ++i) {
+            write_zeros_ar(i);
+        }
+        return;
+    }
+    else if (load_thread && load_thread->joinable()){
+        load_thread->join();
+        make_buffers();
+    }
+
+    for (int i=0; i<nSamples; ++i){
+        output[i] = step(input[i]);
+    }
+}
+
+void AsyncRAVE::write(float x){
+    // write to the resampler
+    // std::cout << "write to res_in" << std::endl;
+    res_in.write(x);
+
+    // while there are new model samples, write them into buffer
+    while(res_in.pending()){
+        // std::cout << "read from res_in" << std::endl;
+        inBuffer[inIdx] = res_in.read();
+        inIdx += 1;
+        m_internal_samples += 1;
+        if (inIdx == model->block_size){
+            dispatch();
+            inIdx = 0;
+        }
+    }
+}
+
+float AsyncRAVE::read(){
+    float x;
+    // until an output sample is ready, process model samples
+    while (!res_out.pending()){
+        if (m_internal_samples < model->block_size + m_processing_latency){
+            // write zeros until first buffer is full,
+            // plus processing time has elapsed
+            x = 0;
+        } else {
+            if (outIdx % model->block_size == 0){
+                join();
+            }
+            x = outBuffer[outIdx];
+            outIdx += 1;
+        }    
+        // std::cout << "write to res_out" << std::endl;
+        res_out.write(x);
+    }
+    // std::cout << "read from res_out" << std::endl;
+    return res_out.read();
+}
+
+// TODO: prior
+void AsyncRAVE::dispatch(){
+
+    if (compute_thread && compute_thread->joinable()) 
+        std::cout << "ERROR: trying to start compute_thread before previous one is finished" << std::endl;
+
+    c10::InferenceMode guard;
+    // copy inBuffer to a tensor
+    auto x = torch::from_blob(inBuffer, model->block_size).clone();
+    model->inputs_rave[0] = x.reshape({1, 1, model->block_size});
+    // start model processing on a thread
+    // std::cout << "dispatch at " << m_internal_samples << std::endl;
+    compute_thread = std::make_unique<std::thread>(
+        &RAVEModel::forward, model, x);
+}
+
+void AsyncRAVE::join(){
+    // join model thread
+    // std::cout << "join" << std::endl;
+    if (!compute_thread) std::cout << "ERROR: no compute_thread" << std::endl;
+    if (!compute_thread->joinable()) std::cout << "ERROR: compute_thread not joinable" << std::endl;
+
+    compute_thread->join();
+    // copy tensor to outbuffer
+    auto data = model->result_tensor.data_ptr<float>();
+    for (int i=0; i<model->block_size; ++i){
+      outBuffer[i] = data[i];
+    }  
+    outIdx = 0;
+}
+
 void RAVE::make_buffers(){
     inBuffer = (float*)RTAlloc(this->mWorld, model->block_size * sizeof(float));
     outBuffer = (float*)RTAlloc(this->mWorld, model->block_size * sizeof(float));
@@ -83,24 +219,6 @@ RAVEDecoder::RAVEDecoder() : RAVEBase(){
     this->ugen_outputs = 1;
     if (!load_thread) make_buffers();
     mCalcFunc = make_calc_function<RAVEDecoder, &RAVEDecoder::next>();
-}
-
-RAVEBase::~RAVEBase() {
-    RTFree(this->mWorld, inBuffer);
-    RTFree(this->mWorld, outBuffer);
-}
-
-void RAVEBase::write_zeros_kr() {
-    // std::cout<<"write zeros"<<std::endl;
-    for (int j=0; j < this->ugen_outputs; ++j){
-        out0(j) = 0;
-    }
-}
-void RAVEBase::write_zeros_ar(int i) {
-    // std::cout<<"write zeros"<<std::endl;
-    for (int j=0; j < this->ugen_outputs; ++j){
-        out(j)[i] = 0;
-    }
 }
 
 void RAVE::next(int nSamples) {
@@ -305,7 +423,8 @@ void RAVEDecoder::next(int nSamples) {
 PluginLoad(RAVEUGens) {
     // Plugin magic
     ft = inTable;
-    registerUnit<RAVE::RAVE>(ft, "RAVE", false);
+    registerUnit<RAVE::AsyncRAVE>(ft, "RAVE", false);
+    // registerUnit<RAVE::RAVE>(ft, "RAVE", false);
     registerUnit<RAVE::RAVEPrior>(ft, "RAVEPrior", false);
     registerUnit<RAVE::RAVEEncoder>(ft, "RAVEEncoder", false);
     registerUnit<RAVE::RAVEDecoder>(ft, "RAVEDecoder", false);
