@@ -146,33 +146,19 @@ struct RAVEModel {
   }
 
   // for async
-  void forward(float* inBuffer, float* outBuffer){
+  void encode_decode(float* inBuffer, float* outBuffer){
     c10::InferenceMode guard;
 
     inputs_rave[0] = torch::from_blob(inBuffer, block_size)
       .reshape({1, 1, block_size});
 
-    auto result = this->model(inputs_rave).toTensor();
+    const auto result = this->model(inputs_rave).toTensor();
 
     auto data = result.data_ptr<float>();
     for (int i=0; i<block_size; ++i){
       outBuffer[i] = data[i];
     }  
 
-  }
-
-  void encode_decode (float* input, float* outBuffer) {
-    c10::InferenceMode guard;
-
-    inputs_rave[0] = torch::from_blob(input, block_size)
-      .reshape({1, 1, block_size});
-
-    const auto y = this->model(inputs_rave).toTensor();
-
-    auto data = y.data_ptr<float>();
-    for (int i=0; i<block_size; i++){
-      outBuffer[i] = data[i];
-    }  
   }
 
   // TODO: version of prior which consumes last frame
@@ -364,19 +350,28 @@ public:
 
 class AsyncRAVE : public RAVEBase {
   public:
-    float delay;
+    float delay; // estimated total delay in seconds
     Resampler res_in;
     Resampler res_out;
-    long m_internal_samples;
+    long m_internal_samples; // count of total samples processed
     int m_processing_latency; // in model samples
 
     AsyncRAVE();
     void next(int nSamples);
-    void make_buffers();
-    void write(float x);
+
+    // dynamic alloc after loading / before running model
+    void make_buffers(); 
+    // ingest a single sample of audio input
+    void write(float x); 
+    // return a single sample of audio output
     float read();
-    void dispatch();
-    void join();
+    // start the next block of processing
+    // and read control rate inputs
+    void dispatch(); 
+    // finish the last block of processing
+    // and write control rate outputs
+    void join(); 
+    // read and write should be used together like so:
     float step(float x){write(x); return read();}
 };
 

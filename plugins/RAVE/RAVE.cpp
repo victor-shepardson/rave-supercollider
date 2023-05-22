@@ -53,7 +53,6 @@ void RAVEBase::write_zeros_ar(int i) {
     }
 }
 
-
 void AsyncRAVE::make_buffers(){
     // this gets called when after model loading is done
     // and before processing starts
@@ -63,10 +62,19 @@ void AsyncRAVE::make_buffers(){
     modelOutBuffer = (float*)RTAlloc(mWorld, model->block_size * sizeof(float));
     res_in = Resampler(mRate->mSampleRate, model->sr, 3);
     res_out = Resampler(model->sr, mRate->mSampleRate, 3);
+
+    if (m_processing_latency < 0)
+        m_processing_latency = model->block_size - 1;
+
+    // TODO: expose delay to user
+    delay = 
+        (model->block_size + m_processing_latency)/model->sr 
+        + res_in.delay + res_out.delay;
 }
 AsyncRAVE::AsyncRAVE() : RAVEBase(){
-    // TODO: default should be block_size - 1
-    m_processing_latency = 2047;
+    // TODO: expose processing latency to user
+    //defaults to block_size - 1
+    m_processing_latency = -1;
     m_internal_samples = 0;
     ugen_outputs = 1;
     if (!load_thread) make_buffers();
@@ -75,8 +83,8 @@ AsyncRAVE::AsyncRAVE() : RAVEBase(){
 
 void AsyncRAVE::next(int nSamples) {
     const float* input = in(filename_length+1);
-    const float use_prior = in0(filename_length+2);
-    const float temperature = in0(filename_length+3);
+    // const float use_prior = in0(filename_length+2);
+    // const float temperature = in0(filename_length+3);
 
     float* output = out(0);
 
@@ -136,8 +144,9 @@ float AsyncRAVE::read(){
     return res_out.read();
 }
 
-// TODO: prior
 void AsyncRAVE::dispatch(){
+    const float use_prior = in0(filename_length+2);
+    const float temperature = in0(filename_length+3);
 
     if (compute_thread && compute_thread->joinable()) 
         std::cout << "ERROR: trying to start compute_thread before previous one is finished" << std::endl;
@@ -147,8 +156,14 @@ void AsyncRAVE::dispatch(){
     modelInBuffer = inBuffer;
     inBuffer = temp;
 
-    compute_thread = std::make_unique<std::thread>(
-        &RAVEModel::forward, model, modelInBuffer, modelOutBuffer);
+    if(use_prior && model->prior_temp_size>0){
+            compute_thread = std::make_unique<std::thread>(
+        &RAVEModel::prior_decode, model, temperature, modelOutBuffer);
+    } else {
+        compute_thread = std::make_unique<std::thread>(
+            &RAVEModel::encode_decode, model, modelInBuffer, modelOutBuffer);
+    }          
+
 }
 
 void AsyncRAVE::join(){
@@ -158,7 +173,7 @@ void AsyncRAVE::join(){
     if (!compute_thread->joinable()) std::cout << "ERROR: compute_thread not joinable" << std::endl;
 
     compute_thread->join();
-    
+
     // swap buffers
     auto temp = modelOutBuffer;
     modelOutBuffer = outBuffer;
@@ -264,7 +279,8 @@ void RAVE::next(int nSamples) {
                     model->prior_decode(temperature, outBuffer);
                 } else {
                     model->encode_decode(inBuffer, outBuffer);
-                }                outIdx = inIdx = 0;
+                }                
+                outIdx = inIdx = 0;
                 first_block_done = true;
             }
         }
