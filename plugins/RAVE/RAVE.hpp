@@ -212,6 +212,7 @@ float sinc(float x){
   return x==0 ? 1.0 : std::sin(x*M_PI) / (x*M_PI);
 }
 
+// TODO: special case when rate_in == rate_out
 class Resampler {
   public:
     long m_rate_in;
@@ -242,12 +243,12 @@ class Resampler {
       m_lanczos_n = lanczos_n;
       m_lanczos_rate = std::min(rate_in, rate_out);
 
+      // TODO: this should result in a m_filt_len=1 when lanczos_n==0 ...
+      // could then just set to 0 if sample rates are the same 
       m_filt_len = int(std::ceil(
         rate_in / m_lanczos_rate * (m_lanczos_n + 1) * 2
       ));
 
-      // m_values = (float*)RTAlloc(unit->mWorld, m_filt_len * sizeof(float));
-      // m_times = (long*)RTAlloc(unit->mWorld, m_filt_len * sizeof(long));
       m_values = std::vector<float>(m_filt_len);
       m_times = std::vector<long>(m_filt_len);
 
@@ -268,7 +269,9 @@ class Resampler {
     float filter(float t){
       float t_center = t - delay; // in seconds
       float t_scale = t_center * m_lanczos_rate; // in samples at lanczos rate
-      float w = sinc(t_scale/m_lanczos_n); //* float(std::fabs(t_scale) < m_lanczos_n);
+      float w = 
+        sinc(t_scale/m_lanczos_n) 
+        * ((std::fabs(t_scale) <= m_lanczos_n) ? 1.0f : 0.0f);
 
       // std::cout << t << " " << delay << " " << t_center << " " << t_scale << " " << w << std::endl;
 
@@ -356,21 +359,25 @@ class AsyncRAVE : public RAVEBase {
     long m_internal_samples; // count of total samples processed
     int m_processing_latency; // in model samples
 
+    // override these
+    const bool audio_in = true;
+    const bool audio_out = true;
     AsyncRAVE();
     void next(int nSamples);
-
-    // dynamic alloc after loading / before running model
-    void make_buffers(); 
-    // ingest a single sample of audio input
-    void write(float x); 
-    // return a single sample of audio output
-    float read();
     // start the next block of processing
     // and read control rate inputs
     void dispatch(); 
     // finish the last block of processing
     // and write control rate outputs
     void join(); 
+
+    // these work (or are unused) for all subclasses
+    // dynamic alloc after loading / before running model
+    void make_buffers(); 
+    // ingest a single sample of audio input
+    void write(float x); 
+    // return a single sample of audio output
+    float read();
     // read and write should be used together like so:
     float step(float x){write(x); return read();}
 };

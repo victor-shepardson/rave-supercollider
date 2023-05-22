@@ -56,20 +56,38 @@ void RAVEBase::write_zeros_ar(int i) {
 void AsyncRAVE::make_buffers(){
     // this gets called when after model loading is done
     // and before processing starts
-    inBuffer = (float*)RTAlloc(mWorld, model->block_size * sizeof(float));
-    outBuffer = (float*)RTAlloc(mWorld, model->block_size * sizeof(float));
-    modelInBuffer = (float*)RTAlloc(mWorld, model->block_size * sizeof(float));
-    modelOutBuffer = (float*)RTAlloc(mWorld, model->block_size * sizeof(float));
-    res_in = Resampler(mRate->mSampleRate, model->sr, 3);
-    res_out = Resampler(model->sr, mRate->mSampleRate, 3);
-
-    if (m_processing_latency < 0)
-        m_processing_latency = model->block_size - 1;
 
     // TODO: expose delay to user
-    delay = 
-        (model->block_size + m_processing_latency)/model->sr 
-        + res_in.delay + res_out.delay;
+    delay = (model->block_size + m_processing_latency)/model->sr;
+        
+    if (audio_in){
+        inBuffer = (float*)
+            RTAlloc(mWorld, model->block_size * sizeof(float));
+        modelInBuffer = (float*)
+            RTAlloc(mWorld, model->block_size * sizeof(float));
+        res_in = Resampler(mRate->mSampleRate, model->sr, 3);
+        delay += res_in.delay;
+    }
+    else {
+        // dummy resampler which just counts model blocks
+        res_in = Resampler(mRate->mSampleRate, model->sr, 0);
+        // start processing immediately
+        inIdx = model->block_size - 1;
+    }
+
+    if (audio_out){
+        outBuffer = (float*)
+            RTAlloc(mWorld, model->block_size * sizeof(float));
+        modelOutBuffer = (float*)
+            RTAlloc(mWorld, model->block_size * sizeof(float));
+        res_out = Resampler(model->sr, mRate->mSampleRate, 3);
+        delay += res_out.delay;
+    }
+
+    if (m_processing_latency < 0){
+        m_processing_latency = model->block_size - 1;
+    }
+
 }
 AsyncRAVE::AsyncRAVE() : RAVEBase(){
     // TODO: expose processing latency to user
@@ -105,6 +123,9 @@ void AsyncRAVE::next(int nSamples) {
 }
 
 void AsyncRAVE::write(float x){
+    // if there is no audio in,
+    // still use a dummy resampler to count model blocks
+
     // write to the resampler
     // std::cout << "write to res_in" << std::endl;
     res_in.write(x);
@@ -112,7 +133,8 @@ void AsyncRAVE::write(float x){
     // while there are new model samples, write them into buffer
     while(res_in.pending()){
         // std::cout << "read from res_in" << std::endl;
-        inBuffer[inIdx] = res_in.read();
+        auto x = res_in.read();
+        if(audio_in) inBuffer[inIdx] = x;
         inIdx += 1;
         m_internal_samples += 1;
         if (inIdx == model->block_size){
@@ -123,6 +145,9 @@ void AsyncRAVE::write(float x){
 }
 
 float AsyncRAVE::read(){
+    // if there is no audio out,
+    // we can skip the resampler completely
+
     float x;
     // until an output sample is ready, process model samples
     while (!res_out.pending()){
@@ -133,15 +158,16 @@ float AsyncRAVE::read(){
         } else {
             if (outIdx % model->block_size == 0){
                 join();
+                outIdx = 0;
             }
-            x = outBuffer[outIdx];
+            if(audio_out) x = outBuffer[outIdx];
             outIdx += 1;
         }    
         // std::cout << "write to res_out" << std::endl;
-        res_out.write(x);
+        if(audio_out) res_out.write(x);
     }
     // std::cout << "read from res_out" << std::endl;
-    return res_out.read();
+    return audio_out ? res_out.read() : 0;
 }
 
 void AsyncRAVE::dispatch(){
@@ -178,8 +204,6 @@ void AsyncRAVE::join(){
     auto temp = modelOutBuffer;
     modelOutBuffer = outBuffer;
     outBuffer = temp;
-
-    outIdx = 0;
 }
 
 void RAVE::make_buffers(){
