@@ -59,6 +59,8 @@ void AsyncRAVE::make_buffers(){
     // and before processing starts
     inBuffer = (float*)RTAlloc(mWorld, model->block_size * sizeof(float));
     outBuffer = (float*)RTAlloc(mWorld, model->block_size * sizeof(float));
+    modelInBuffer = (float*)RTAlloc(mWorld, model->block_size * sizeof(float));
+    modelOutBuffer = (float*)RTAlloc(mWorld, model->block_size * sizeof(float));
     res_in = Resampler(mRate->mSampleRate, model->sr, 3);
     res_out = Resampler(model->sr, mRate->mSampleRate, 3);
 }
@@ -140,14 +142,13 @@ void AsyncRAVE::dispatch(){
     if (compute_thread && compute_thread->joinable()) 
         std::cout << "ERROR: trying to start compute_thread before previous one is finished" << std::endl;
 
-    c10::InferenceMode guard;
-    // copy inBuffer to a tensor
-    auto x = torch::from_blob(inBuffer, model->block_size).clone();
-    model->inputs_rave[0] = x.reshape({1, 1, model->block_size});
-    // start model processing on a thread
-    // std::cout << "dispatch at " << m_internal_samples << std::endl;
+    // swap buffers
+    auto temp = modelInBuffer;
+    modelInBuffer = inBuffer;
+    inBuffer = temp;
+
     compute_thread = std::make_unique<std::thread>(
-        &RAVEModel::forward, model, x);
+        &RAVEModel::forward, model, modelInBuffer, modelOutBuffer);
 }
 
 void AsyncRAVE::join(){
@@ -157,11 +158,12 @@ void AsyncRAVE::join(){
     if (!compute_thread->joinable()) std::cout << "ERROR: compute_thread not joinable" << std::endl;
 
     compute_thread->join();
-    // copy tensor to outbuffer
-    auto data = model->result_tensor.data_ptr<float>();
-    for (int i=0; i<model->block_size; ++i){
-      outBuffer[i] = data[i];
-    }  
+    
+    // swap buffers
+    auto temp = modelOutBuffer;
+    modelOutBuffer = outBuffer;
+    outBuffer = temp;
+
     outIdx = 0;
 }
 

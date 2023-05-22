@@ -18,7 +18,7 @@ namespace RAVE {
 struct RAVEModel {
 
   torch::jit::Module model;
-  torch::Tensor result_tensor;
+  // torch::Tensor result_tensor;
 
   int sr; 
   int block_size;
@@ -146,13 +146,19 @@ struct RAVEModel {
   }
 
   // for async
-  // void forward(){
-  void forward(torch::Tensor x){
+  void forward(float* inBuffer, float* outBuffer){
     c10::InferenceMode guard;
-    // std::vector<torch::jit::IValue> inputs_rave(1);
-    // result_tensor = x;
-    // inputs_rave[0] = x.reshape({1, 1, block_size});
-    result_tensor = this->model(inputs_rave).toTensor();
+
+    inputs_rave[0] = torch::from_blob(inBuffer, block_size)
+      .reshape({1, 1, block_size});
+
+    auto result = this->model(inputs_rave).toTensor();
+
+    auto data = result.data_ptr<float>();
+    for (int i=0; i<block_size; ++i){
+      outBuffer[i] = data[i];
+    }  
+
   }
 
   void encode_decode (float* input, float* outBuffer) {
@@ -343,6 +349,9 @@ public:
 
     float * outBuffer; // allocated in subclass constructor
     size_t outIdx;
+
+    float * modelInBuffer;
+    float * modelOutBuffer;
 
     bool first_block_done;
     int filename_length;
