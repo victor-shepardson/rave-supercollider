@@ -2,13 +2,12 @@ RAVE : UGen {
 	*new { |filename, input, usePrior, temperature|
 		var file_args = Array.with(filename.size, *filename.asList.collect(_.ascii));
 		var input_args = [input, usePrior, temperature];
-		var inst = this.multiNew('audio', *(file_args++input_args));
 		filename.isString.not.if{
 			"ERROR: % first argument should be a String (the RAVE model filename)
 			note that the filename does *not* support multichannel expansion"
 			.format(this).postln;
-		}
-		^inst
+		};
+		^this.multiNew('audio', *(file_args++input_args));
 	}
 	checkInputs {
 		/* TODO */
