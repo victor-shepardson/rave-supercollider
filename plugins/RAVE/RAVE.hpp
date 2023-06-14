@@ -364,13 +364,13 @@ public:
     // override these
     const bool audio_in = true;
     const bool audio_out = true;
-    virtual void next(int nSamples) = 0;
+    // virtual void next(int nSamples) = 0;
     // start the next block of processing
     // and read control rate inputs
-    virtual void dispatch() = 0; 
+    void dispatch() {std::cout<<"abstract dispatch"<<std::endl;} 
     // finish the last block of processing
     // and write control rate outputs
-    virtual void join(); 
+    void join(); 
 
     // these work (or are unused) for all subclasses
     // dynamic alloc after loading / before running model

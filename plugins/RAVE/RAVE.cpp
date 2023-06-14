@@ -203,8 +203,7 @@ AsyncRAVE::AsyncRAVE() : AsyncRAVEBase() {
 }
 
 void AsyncRAVE::next(int nSamples) {
-
-    std::cout << "next" << std::endl;
+    // std::cout << "next" << std::endl;
 
     const float* input = in(filename_length+1);
     const float use_prior = in0(filename_length+2);
