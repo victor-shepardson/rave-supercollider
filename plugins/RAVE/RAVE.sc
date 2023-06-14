@@ -7,7 +7,7 @@ RAVE : UGen {
 			note that the filename does *not* support multichannel expansion"
 			.format(this).postln;
 		};
-		^this.multiNew('audio', *(file_args++input_args));
+		^this.multiNewList(['audio']++file_args++input_args);
 	}
 	checkInputs {
 		/* TODO */

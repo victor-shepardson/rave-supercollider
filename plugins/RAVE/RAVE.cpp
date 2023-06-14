@@ -10,654 +10,682 @@ namespace RAVE {
 
 // auto RAVEBase::models = std::map<std::string, RAVEModel* >();
 
-RAVEBase::RAVEBase() {
-    inIdx = 0;
-    outIdx = 0;
-    first_block_done = false;
+// RAVEBase::RAVEBase() {
+//     std::cout<<"RAVEBase abort"<<std::endl;return; //DEBUG
 
-    filename_length = in0(0);
-    std::cout<<filename_length<<std::endl;
-    // char path[filename_length];
-    auto path = std::string(filename_length, '!');
-    for (int i=0; i<filename_length; i++){
-        path[i] = static_cast<char>(in0(i+1));
-    }
+//     std::cout << "RAVEBase constructor" << std::endl;
 
-    model = new RAVEModel();
-    std::cout << "loading: \"" << path << "\"" << std::endl;
-    // model->load(path);
-    load_thread = std::make_unique<std::thread>(&RAVEModel::load, model, path);
-}
+//     inBuffer = outBuffer = modelInBuffer = modelOutBuffer = nullptr;
+//     inIdx = 0;
+//     outIdx = 0;
+//     first_block_done = false;
 
-RAVEBase::~RAVEBase() {
-    if (load_thread && load_thread->joinable()) {
-        compute_thread->join();
-    }
-    if (compute_thread && compute_thread->joinable()) {
-        compute_thread->join();
-    }
-    RTFree(this->mWorld, inBuffer);
-    RTFree(this->mWorld, outBuffer);
-}
+//     filename_length = in0(0);
+//     std::cout<<filename_length<<std::endl;
+//     // char path[filename_length];
+//     auto path = std::string(filename_length, '!');
+//     for (int i=0; i<filename_length; i++){
+//         path[i] = static_cast<char>(in0(i+1));
+//     }
 
-void RAVEBase::write_zeros_kr() {
-    // std::cout<<"write zeros"<<std::endl;
-    for (int j=0; j < this->ugen_outputs; ++j){
-        out0(j) = 0;
-    }
-}
-void RAVEBase::write_zeros_ar(int i) {
-    // std::cout<<"write zeros"<<std::endl;
-    for (int j=0; j < this->ugen_outputs; ++j){
-        out(j)[i] = 0;
-    }
-}
+//     // model = std::make_unique<RAVEModel>();
+//     std::cout << "loading: \"" << path << "\"" << std::endl;
+//     model.load(path);
+//     // load_thread = std::make_unique<std::thread>(&RAVEModel::load, &model, path);
+// }
 
-AsyncRAVEBase::AsyncRAVEBase() : RAVEBase() {
-    // TODO: expose processing latency to user
-    //defaults to block_size - 1
-    m_processing_latency = -1;
-    // count of model samples elapsed
-    m_internal_samples = 0;
-}
+// RAVEBase::~RAVEBase() {
+//     if (load_thread && load_thread->joinable()) {
+//         compute_thread->join();
+//     }
+//     if (compute_thread && compute_thread->joinable()) {
+//         compute_thread->join();
+//     }
+//     RTFree(mWorld, inBuffer);
+//     RTFree(mWorld, outBuffer);
+// }
 
-AsyncRAVEBase::~AsyncRAVEBase() {
-    //TODO: sDtor inheritance?
-    RTFree(this->mWorld, modelInBuffer);
-    RTFree(this->mWorld, modelOutBuffer);
-}
+// void RAVEBase::write_zeros_kr() {
+//     // std::cout<<"write zeros"<<std::endl;
+//     for (int j=0; j < this->ugen_outputs; ++j){
+//         out0(j) = 0;
+//     }
+// }
+// void RAVEBase::write_zeros_ar(int i) {
+//     // std::cout<<"write zeros"<<std::endl;
+//     for (int j=0; j < this->ugen_outputs; ++j){
+//         out(j)[i] = 0;
+//     }
+// }
 
-void AsyncRAVEBase::make_buffers(){
-    // this gets called when after model loading is done
-    // and before processing starts
+// AsyncRAVEBase::AsyncRAVEBase() : RAVEBase() {
+//     std::cout<<"AsyncRAVEBase abort"<<std::endl;return; //DEBUG
 
-    // TODO: expose delay to user
-    delay = (model->block_size + m_processing_latency)/model->sr;
-    auto buf_size = model->block_size * sizeof(float);
-    inBuffer = (float*)RTAlloc(mWorld, buf_size);
-    modelInBuffer = (float*)RTAlloc(mWorld, buf_size);
-    outBuffer = (float*)RTAlloc(mWorld, buf_size);
-    modelOutBuffer = (float*)RTAlloc(mWorld, buf_size);
+//     // TODO: expose processing latency to user
+//     //defaults to block_size - 1
+//     m_processing_latency = -1;
+//     // count of model samples elapsed
+//     m_internal_samples = 0;
+// }
 
-    auto sr = mWorld->mFullRate.mSampleRate;
+// AsyncRAVEBase::~AsyncRAVEBase() {
+//     //TODO: Dtor inheritance?
+//     RTFree(mWorld, modelInBuffer);
+//     RTFree(mWorld, modelOutBuffer);
+// }
+
+// void AsyncRAVEBase::make_buffers(){
+//     std::cout << "additional init after model load..." << std::endl;
+//     return;//DEBUG
+
+//     // this gets called when after model loading is done
+//     // and before processing starts
+
+//     // TODO: expose delay to user
+//     delay = (model.block_size + m_processing_latency)/model.sr;
+//     auto buf_size = model.block_size * sizeof(float);
+//     // std::cout<<"buf_size: "<<buf_size<<std::endl;
+//     inBuffer = (float*)RTAlloc(mWorld, buf_size);
+//     modelInBuffer = (float*)RTAlloc(mWorld, buf_size);
+//     outBuffer = (float*)RTAlloc(mWorld, buf_size);
+//     modelOutBuffer = (float*)RTAlloc(mWorld, buf_size);
+
+//     Unit* unit = (Unit*) this;
+//     ClearUnitIfMemFailed(inBuffer && outBuffer && modelInBuffer && modelOutBuffer);
+
+//     auto sr = mWorld->mFullRate.mSampleRate;
        
-    if (audio_in){
-        res_in = Resampler(sr, model->sr, 3);
-        inIdx = 0;
-        delay += res_in.delay;
-    }
-    else {
-        // dummy resampler which just counts model blocks
-        res_in = Resampler(sr, model->sr, 0);
-        // start processing immediately
-        inIdx = model->block_size - 1;
-    }
+//     if (audio_in){
+//         // res_in = Resampler(sr, model.sr, 3);
+//         res_in = std::make_unique<Resampler>(sr, model.sr, 3);
+//         delay += res_in->delay;
+//     }
+//     else {
+//         // dummy resampler which just counts model blocks
+//         // res_in = Resampler(sr, model.sr, 0);
+//         res_in = std::make_unique<Resampler>(sr, model.sr, 0);
+//         // start processing immediately
+//         inIdx = model.block_size - 1;
+//     }
 
-    if (audio_out){
-        res_out = Resampler(model->sr, sr, 3);
-        delay += res_out.delay;
-    } 
-    else {
-        res_out = Resampler(model->sr, sr, 0);
+//     if (audio_out){
+//         // res_out = Resampler(model.sr, sr, 3);
+//         res_out = std::make_unique<Resampler>(model.sr, sr, 3);
+//         delay += res_out->delay;
+//     } 
+//     else {
+//         // res_out = Resampler(model.sr, sr, 0);
+//         res_out = std::make_unique<Resampler>(model.sr, sr, 0);
 
-        if (ugen_outputs != model->latent_size){
-            std::cout << "WARNING: UGen outputs (" << ugen_outputs 
-            << ") do not match number of latent dimensions in model (" 
-            << model->latent_size << ")" << std::endl;
-        }
-    }
+//         if (ugen_outputs != model.latent_size){
+//             std::cout << "WARNING: UGen outputs (" << ugen_outputs 
+//             << ") do not match number of latent dimensions in model (" 
+//             << model.latent_size << ")" << std::endl;
+//         }
+//     }
 
-    if (m_processing_latency < 0){
-        m_processing_latency = model->block_size - 1;
-    }
-}
+//     if (m_processing_latency < 0){
+//         m_processing_latency = model.block_size - 1;
+//     }
 
-void AsyncRAVEBase::write(float x){
-    // if there is no audio in,
-    // still use a dummy resampler to count model blocks
+//      std::cout << "UGen init finished" << std::endl;
+// }
 
-    // write to the resampler
-    // std::cout << "write to res_in" << std::endl;
-    res_in.write(x);
+// void AsyncRAVEBase::write(float x){
+//     // if there is no audio in,
+//     // still use a dummy resampler to count model blocks
 
-    // while there are new model samples, write them into buffer
-    while(res_in.pending()){
-        // std::cout << "read from res_in" << std::endl;
-        auto x = res_in.read();
-        if(audio_in) inBuffer[inIdx] = x;
-        inIdx += 1;
-        m_internal_samples += 1;
-        if (inIdx == model->block_size){
-            dispatch();
-            inIdx = 0;
-        }
-    }
-}
+//     // write to the resampler
+//     // std::cout << "write to res_in" << std::endl;
+//     res_in->write(x);
 
-float AsyncRAVEBase::read(){
-    float x = 0;
-    // until an output sample is ready, process model samples
-    while (!res_out.pending()){
-        // write zeros until first buffer is full,
-        // plus processing time has elapsed
-        if (m_internal_samples >= model->block_size + m_processing_latency){
-            if (outIdx % model->block_size == 0){
-                join();
-                outIdx = 0;
-            }
-            if(audio_out) x = outBuffer[outIdx];
-            outIdx += 1;
-        }    
-        // std::cout << "write to res_out" << std::endl;
-        res_out.write(x);
-    }
-    // std::cout << "read from res_out" << std::endl;
-    return res_out.read();
-}
+//     // while there are new model samples, write them into buffer
+//     while(res_in->pending()){
+//         // std::cout << "read from res_in" << std::endl;
+//         auto x = res_in->read();
+//         if(audio_in) inBuffer[inIdx] = x;
+//         inIdx += 1;
+//         m_internal_samples += 1;
+//         if (inIdx == model.block_size){
+//             dispatch();
+//             inIdx = 0;
+//         }
+//     }
+// }
 
-// same for AsyncRAVE and AsyncRAVEDecoder
-void AsyncRAVEBase::join(){
-    // join model thread
-    // std::cout << "join" << std::endl;
-    if (!compute_thread) 
-        std::cout << "ERROR: no compute thread" << std::endl;
-    if (!compute_thread->joinable()) 
-        std::cout << "ERROR: compute thread not joinable" << std::endl;
+// float AsyncRAVEBase::read(){
+//     float x = 0;
+//     // until an output sample is ready, process model samples
+//     while (!res_out->pending()){
+//         // write zeros until first buffer is full,
+//         // plus processing time has elapsed
+//         if (m_internal_samples >= model.block_size + m_processing_latency){
+//             if (outIdx % model.block_size == 0){
+//                 join();
+//                 outIdx = 0;
+//             }
+//             if(audio_out) x = outBuffer[outIdx];
+//             outIdx += 1;
+//         }    
+//         // std::cout << "write to res_out" << std::endl;
+//         res_out->write(x);
+//     }
+//     // std::cout << "read from res_out" << std::endl;
+//     return res_out->read();
+// }
 
-    compute_thread->join();
+// // same for AsyncRAVE and AsyncRAVEDecoder
+// void AsyncRAVEBase::join(){
+//     // join model thread
+//     std::cout << "join" << std::endl;
+//     if (!compute_thread) 
+//         std::cout << "ERROR: no compute thread" << std::endl;
+//     if (!compute_thread->joinable()) 
+//         std::cout << "ERROR: compute thread not joinable" << std::endl;
 
-    // swap buffers
-    auto temp = modelOutBuffer;
-    modelOutBuffer = outBuffer;
-    outBuffer = temp;
-}
+//     compute_thread->join();
 
-AsyncRAVE::AsyncRAVE() : AsyncRAVEBase(){
-    ugen_outputs = 1;
-    ugen_inputs = 1;
-    if (!load_thread) make_buffers();
-    mCalcFunc = make_calc_function<AsyncRAVE, &AsyncRAVE::next>();
-}
+//     // swap buffers
+//     auto temp = modelOutBuffer;
+//     modelOutBuffer = outBuffer;
+//     outBuffer = temp;
+// }
 
-void AsyncRAVE::next(int nSamples) {
-    // std::cout << "next" << std::endl;
-    // return; //DEBUG
+// AsyncRAVE::AsyncRAVE() : AsyncRAVEBase() {
+//     mCalcFunc = make_calc_function<AsyncRAVE, &AsyncRAVE::next>(); //DEBUG
+//     std::cout<<"AsyncRAVE abort"<<std::endl;return; //DEBUG
 
-    const float* input = in(filename_length+1);
-    // const float use_prior = in0(filename_length+2);
-    // const float temperature = in0(filename_length+3);
+//     ugen_outputs = 1;
+//     ugen_inputs = 1;
+//     if (!load_thread) make_buffers();
+//     mCalcFunc = make_calc_function<AsyncRAVE, &AsyncRAVE::next>();
+//     std::cout<<"constructor end"<<std::endl;
+// }
 
-    float* output = out(0);
+// void AsyncRAVE::next(int nSamples) {
+//     std::cout << "next abort" << std::endl; return; //DEBUG
 
-    if (!model->loaded){
-        for (int i=0; i<nSamples; ++i) {
-            write_zeros_ar(i);
-        }
-        return;
-    }
-    else if (load_thread && load_thread->joinable()){
-        load_thread->join();
-        make_buffers();
-    }
+//     std::cout << "next" << std::endl;
 
-    for (int i=0; i<nSamples; ++i){
-        output[i] = step(input[i]);
-    }
-}
+//     const float* input = in(filename_length+1);
+//     // const float use_prior = in0(filename_length+2);
+//     // const float temperature = in0(filename_length+3);
 
-void AsyncRAVE::dispatch(){
-    const float use_prior = in0(filename_length+2);
-    const float temperature = in0(filename_length+3);
+//     float* output = out(0);
 
-    // std::cout << "dispatch" << std::endl;
+//     if (!model.loaded){
+//         for (int i=0; i<nSamples; ++i) {
+//             write_zeros_ar(i);
+//         }
+//         return;
+//     }
+//     else if (load_thread && load_thread->joinable()){
+//         load_thread->join();
+//         make_buffers();
+//     }
 
-    if (compute_thread && compute_thread->joinable()) 
-        std::cout << "ERROR: trying to start compute_thread before previous one is finished" << std::endl;
+//     for (int i=0; i<nSamples; ++i){
+//         output[i] = step(input[i]);
+//     }
+// }
 
-    // swap buffers
-    auto temp = modelInBuffer;
-    modelInBuffer = inBuffer;
-    inBuffer = temp;
+// void AsyncRAVE::dispatch(){
+//     const float use_prior = in0(filename_length+2);
+//     const float temperature = in0(filename_length+3);
 
-    if(use_prior && model->prior_temp_size>0){
-        compute_thread = std::make_unique<std::thread>(
-            &RAVEModel::prior_decode, model, temperature, modelOutBuffer);
-    } else {
-        compute_thread = std::make_unique<std::thread>(
-            &RAVEModel::encode_decode, model, modelInBuffer, modelOutBuffer);
-    }          
-}
+//     std::cout << "dispatch" << std::endl;
 
-AsyncRAVEEncoder::AsyncRAVEEncoder() : AsyncRAVEBase(){
-    ugen_inputs = 1;
-    ugen_outputs = in0(filename_length+1);
-    if (!load_thread) make_buffers();
-    mCalcFunc = make_calc_function<AsyncRAVEEncoder, &AsyncRAVEEncoder::next>();
-}
+//     if (compute_thread && compute_thread->joinable()) 
+//         std::cout << "ERROR: trying to start compute_thread before previous one is finished" << std::endl;
 
-void AsyncRAVEEncoder::next(int nSamples) {
-    const float* input = in(filename_length+2);
+//     // swap buffers
+//     auto temp = modelInBuffer;
+//     modelInBuffer = inBuffer;
+//     inBuffer = temp;
 
-    if (!model->loaded){
-        write_zeros_kr();
-        return;
-    }
-    else if (load_thread && load_thread->joinable()){
-        load_thread->join();
-        make_buffers();
-    }
+//     // model.encode_decode(modelInBuffer, modelOutBuffer); return;//DEBUG
 
-    for (int i=0; i<fullBufferSize(); ++i){
-        step(input[i]);
-    }
-}
+//     if(use_prior && model.prior_temp_size>0){
+//         compute_thread = std::make_unique<std::thread>(
+//             &RAVEModel::prior_decode, &model, temperature, modelOutBuffer);
+//     } else {
+//         compute_thread = std::make_unique<std::thread>(
+//             &RAVEModel::encode_decode, &model, modelInBuffer, modelOutBuffer);
+//     }          
+// }
 
-void AsyncRAVEEncoder::dispatch(){
+// AsyncRAVEEncoder::AsyncRAVEEncoder() : AsyncRAVEBase(){
+//     ugen_inputs = 1;
+//     ugen_outputs = in0(filename_length+1);
+//     if (!load_thread) make_buffers();
+//     mCalcFunc = make_calc_function<AsyncRAVEEncoder, &AsyncRAVEEncoder::next>();
+// }
 
-    if (compute_thread && compute_thread->joinable()) 
-        std::cout 
-        << "ERROR: trying to start compute thread before previous is finished" 
-        << std::endl;
+// void AsyncRAVEEncoder::next(int nSamples) {
+//     const float* input = in(filename_length+2);
 
-    // swap buffers
-    auto temp = modelInBuffer;
-    modelInBuffer = inBuffer;
-    inBuffer = temp;
+//     if (!model.loaded){
+//         write_zeros_kr();
+//         return;
+//     }
+//     else if (load_thread && load_thread->joinable()){
+//         load_thread->join();
+//         make_buffers();
+//     }
 
-    compute_thread = std::make_unique<std::thread>(
-        &RAVEModel::encode, model, modelInBuffer, modelOutBuffer);
-}
+//     for (int i=0; i<fullBufferSize(); ++i){
+//         step(input[i]);
+//     }
+// }
 
-void AsyncRAVEEncoder::join(){
-    // join model thread
-    // std::cout << "join" << std::endl;
-    if (!compute_thread) 
-        std::cout << "ERROR: no compute_thread" << std::endl;
-    if (!compute_thread->joinable()) 
-        std::cout << "ERROR: compute thread not joinable" << std::endl;
+// void AsyncRAVEEncoder::dispatch(){
 
-    compute_thread->join();
+//     if (compute_thread && compute_thread->joinable()) 
+//         std::cout 
+//         << "ERROR: trying to start compute thread before previous is finished" 
+//         << std::endl;
 
-    // immediately write control-rate outputs
-    // SC preserves these between frames (right?)
-    // if that isn't true, will need to swap the output buffers and do this in `next` instead
-    for (int j=0; j < std::min(model->latent_size, this->ugen_outputs); ++j){
-        out0(j) = modelOutBuffer[j];
-    }
-}
+//     // swap buffers
+//     auto temp = modelInBuffer;
+//     modelInBuffer = inBuffer;
+//     inBuffer = temp;
 
-AsyncRAVEDecoder::AsyncRAVEDecoder() : AsyncRAVEBase(){
-    ugen_inputs = in0(filename_length+1);
-    ugen_outputs = 1;
-    if (!load_thread) make_buffers();
-    mCalcFunc = make_calc_function<AsyncRAVEDecoder, &AsyncRAVEDecoder::next>();
-}
+//     compute_thread = std::make_unique<std::thread>(
+//         &RAVEModel::encode, &model, modelInBuffer, modelOutBuffer);
+// }
 
-void AsyncRAVEDecoder::next(int nSamples) {
-    float* output = out(0);
+// void AsyncRAVEEncoder::join(){
+//     // join model thread
+//     // std::cout << "join" << std::endl;
+//     if (!compute_thread) 
+//         std::cout << "ERROR: no compute_thread" << std::endl;
+//     if (!compute_thread->joinable()) 
+//         std::cout << "ERROR: compute thread not joinable" << std::endl;
 
-    if (!model->loaded){
-        for (int i=0; i<nSamples; ++i) {
-            write_zeros_ar(i);
-        }
-        return;
-    }
-    else if (load_thread && load_thread->joinable()){
-        load_thread->join();
-        make_buffers();
-        std::cout << 
-            "RAVEDecoder latent size: " << model->latent_size << 
-            "; found " << ugen_inputs << " inputs" << std::endl;
-    }
+//     compute_thread->join();
 
-    for (int i=0; i<nSamples; ++i){
-        output[i] = step(0);
-    }
-}
+//     // immediately write control-rate outputs
+//     // SC preserves these between frames (right?)
+//     // if that isn't true, will need to swap the output buffers and do this in `next` instead
+//     for (int j=0; j < std::min(model.latent_size, this->ugen_outputs); ++j){
+//         out0(j) = modelOutBuffer[j];
+//     }
+// }
 
-void AsyncRAVEDecoder::dispatch(){
-    const float use_prior = in0(filename_length+2);
-    const float temperature = in0(filename_length+3);
+// AsyncRAVEDecoder::AsyncRAVEDecoder() : AsyncRAVEBase(){
+//     ugen_inputs = in0(filename_length+1);
+//     ugen_outputs = 1;
+//     if (!load_thread) make_buffers();
+//     mCalcFunc = make_calc_function<AsyncRAVEDecoder, &AsyncRAVEDecoder::next>();
+// }
 
-    // std::cout << "dispatch" << std::endl;
+// void AsyncRAVEDecoder::next(int nSamples) {
+//     float* output = out(0);
 
-    if (compute_thread && compute_thread->joinable()) 
-        std::cout << "ERROR: trying to start compute_thread before previous one is finished" << std::endl;
+//     if (!model.loaded){
+//         for (int i=0; i<nSamples; ++i) {
+//             write_zeros_ar(i);
+//         }
+//         return;
+//     }
+//     else if (load_thread && load_thread->joinable()){
+//         load_thread->join();
+//         make_buffers();
+//         std::cout << 
+//             "RAVEDecoder latent size: " << model.latent_size << 
+//             "; found " << ugen_inputs << " inputs" << std::endl;
+//     }
 
-    // assumption: n_latent <= block_size
+//     for (int i=0; i<nSamples; ++i){
+//         output[i] = step(0);
+//     }
+// }
 
-    // read control rate latents
-    int first_input = filename_length + 2;
-    for (int j=0; j < model->latent_size; ++j){
-        if (j<ugen_inputs){
-            inBuffer[j] = in0(j + first_input);
-        } else{
-            inBuffer[j] = 0;
-        }
-    }
+// void AsyncRAVEDecoder::dispatch(){
+//     const float use_prior = in0(filename_length+2);
+//     const float temperature = in0(filename_length+3);
 
-    compute_thread = std::make_unique<std::thread>(
-        &RAVEModel::decode, model, inBuffer, modelOutBuffer);    
-}
+//     // std::cout << "dispatch" << std::endl;
+
+//     if (compute_thread && compute_thread->joinable()) 
+//         std::cout << "ERROR: trying to start compute_thread before previous one is finished" << std::endl;
+
+//     // assumption: n_latent <= block_size
+
+//     // read control rate latents
+//     int first_input = filename_length + 2;
+//     for (int j=0; j < model.latent_size; ++j){
+//         if (j<ugen_inputs){
+//             inBuffer[j] = in0(j + first_input);
+//         } else{
+//             inBuffer[j] = 0;
+//         }
+//     }
+
+//     compute_thread = std::make_unique<std::thread>(
+//         &RAVEModel::decode, &model, inBuffer, modelOutBuffer);    
+// }
 
 
-AsyncRAVEPrior::AsyncRAVEPrior() : AsyncRAVEBase(){
-    ugen_inputs = 1;
-    ugen_outputs = in0(filename_length+1);
-    if (!load_thread) make_buffers();
-    mCalcFunc = make_calc_function<AsyncRAVEPrior, &AsyncRAVEPrior::next>();
-}
+// AsyncRAVEPrior::AsyncRAVEPrior() : AsyncRAVEBase(){
+//     ugen_inputs = 1;
+//     ugen_outputs = in0(filename_length+1);
+//     if (!load_thread) make_buffers();
+//     mCalcFunc = make_calc_function<AsyncRAVEPrior, &AsyncRAVEPrior::next>();
+// }
 
-void AsyncRAVEPrior::next(int nSamples) {
-    if (!model->loaded){
-        write_zeros_kr();
-        return;
-    }
-    else if (load_thread && load_thread->joinable()){
-        load_thread->join();
-        make_buffers();
-    }
+// void AsyncRAVEPrior::next(int nSamples) {
+//     if (!model.loaded){
+//         write_zeros_kr();
+//         return;
+//     }
+//     else if (load_thread && load_thread->joinable()){
+//         load_thread->join();
+//         make_buffers();
+//     }
 
-    for (int i=0; i<fullBufferSize(); ++i){
-        step(0);
-    }
-}
+//     for (int i=0; i<fullBufferSize(); ++i){
+//         step(0);
+//     }
+// }
 
-void AsyncRAVEPrior::dispatch(){
-    const float temperature = in0(filename_length+2);
+// void AsyncRAVEPrior::dispatch(){
+//     const float temperature = in0(filename_length+2);
 
-    if (compute_thread && compute_thread->joinable()) 
-        std::cout 
-        << "ERROR: trying to start compute thread before previous is finished" 
-        << std::endl;
+//     if (compute_thread && compute_thread->joinable()) 
+//         std::cout 
+//         << "ERROR: trying to start compute thread before previous is finished" 
+//         << std::endl;
 
-    compute_thread = std::make_unique<std::thread>(
-        &RAVEModel::prior, model, temperature, modelOutBuffer);
-}
+//     compute_thread = std::make_unique<std::thread>(
+//         &RAVEModel::prior, &model, temperature, modelOutBuffer);
+// }
 
-void AsyncRAVEPrior::join(){
-    // join model thread
-    // std::cout << "join" << std::endl;
-    if (!compute_thread) 
-        std::cout << "ERROR: no compute_thread" << std::endl;
-    if (!compute_thread->joinable()) 
-        std::cout << "ERROR: compute thread not joinable" << std::endl;
+// void AsyncRAVEPrior::join(){
+//     // join model thread
+//     // std::cout << "join" << std::endl;
+//     if (!compute_thread) 
+//         std::cout << "ERROR: no compute_thread" << std::endl;
+//     if (!compute_thread->joinable()) 
+//         std::cout << "ERROR: compute thread not joinable" << std::endl;
 
-    compute_thread->join();
+//     compute_thread->join();
 
-    // immediately write control-rate outputs
-    // SC preserves these between frames (right?)
-    // if that isn't true, will need to swap the output buffers and do this in `next` instead
-    for (int j=0; j < std::min(model->latent_size, ugen_outputs); ++j){
-        out0(j) = modelOutBuffer[j];
-    }
-}
+//     // immediately write control-rate outputs
+//     // SC preserves these between frames (right?)
+//     // if that isn't true, will need to swap the output buffers and do this in `next` instead
+//     for (int j=0; j < std::min(model.latent_size, ugen_outputs); ++j){
+//         out0(j) = modelOutBuffer[j];
+//     }
+// }
 
 
 /////////////////////////
 
-void RAVE::make_buffers(){
-    inBuffer = (float*)RTAlloc(this->mWorld, model->block_size * sizeof(float));
-    outBuffer = (float*)RTAlloc(this->mWorld, model->block_size * sizeof(float));
-}
-RAVE::RAVE() : RAVEBase(){
-    this->ugen_outputs = 1;
-    if (!load_thread) make_buffers();
-    mCalcFunc = make_calc_function<RAVE, &RAVE::next>();
-}
+// void RAVE::make_buffers(){
+//     inBuffer = (float*)RTAlloc(this->mWorld, model.block_size * sizeof(float));
+//     outBuffer = (float*)RTAlloc(this->mWorld, model.block_size * sizeof(float));
+// }
+// RAVE::RAVE() : RAVEBase(){
+//     this->ugen_outputs = 1;
+//     if (!load_thread) make_buffers();
+//     mCalcFunc = make_calc_function<RAVE, &RAVE::next>();
+// }
 
-void RAVEPrior::make_buffers(){
-    inBuffer = (float*)RTAlloc(this->mWorld, model->latent_size * sizeof(float));
-    outBuffer = (float*)RTAlloc(this->mWorld, model->latent_size * sizeof(float));
-    if (ugen_outputs != model->latent_size){
-        std::cout << "WARNING: UGen outputs (" << ugen_outputs << ") do not match number of latent dimensions in model (" << model->latent_size << ")" << std::endl;
-    }
-}
-RAVEPrior::RAVEPrior() : RAVEBase(){
-    this->ugen_outputs = in0(filename_length+1);
-    if (!load_thread) make_buffers();
-    // currently unused but is freed in superclass destructor
-    mCalcFunc = make_calc_function<RAVEPrior, &RAVEPrior::next>();
-}
+// void RAVEPrior::make_buffers(){
+//     inBuffer = (float*)RTAlloc(this->mWorld, model.latent_size * sizeof(float));
+//     outBuffer = (float*)RTAlloc(this->mWorld, model.latent_size * sizeof(float));
+//     if (ugen_outputs != model.latent_size){
+//         std::cout << "WARNING: UGen outputs (" << ugen_outputs << ") do not match number of latent dimensions in model (" << model.latent_size << ")" << std::endl;
+//     }
+// }
+// RAVEPrior::RAVEPrior() : RAVEBase(){
+//     this->ugen_outputs = in0(filename_length+1);
+//     if (!load_thread) make_buffers();
+//     // currently unused but is freed in superclass destructor
+//     mCalcFunc = make_calc_function<RAVEPrior, &RAVEPrior::next>();
+// }
 
-void RAVEEncoder::make_buffers(){
-    inBuffer = (float*)RTAlloc(this->mWorld, model->block_size * sizeof(float));
-    outBuffer = (float*)RTAlloc(this->mWorld, model->latent_size * sizeof(float));
+// void RAVEEncoder::make_buffers(){
+//     inBuffer = (float*)RTAlloc(this->mWorld, model.block_size * sizeof(float));
+//     outBuffer = (float*)RTAlloc(this->mWorld, model.latent_size * sizeof(float));
 
-    if (ugen_outputs != model->latent_size){
-        std::cout << "WARNING: UGen outputs (" << ugen_outputs << ") do not match number of latent dimensions in model (" << model->latent_size << ")" << std::endl;
-    }
-}
+//     if (ugen_outputs != model.latent_size){
+//         std::cout << "WARNING: UGen outputs (" << ugen_outputs << ") do not match number of latent dimensions in model (" << model.latent_size << ")" << std::endl;
+//     }
+// }
 
-RAVEEncoder::RAVEEncoder() : RAVEBase(){
-    this->ugen_outputs = in0(filename_length+1);
-    if (!load_thread) make_buffers();
-    mCalcFunc = make_calc_function<RAVEEncoder, &RAVEEncoder::next>();
-}
+// RAVEEncoder::RAVEEncoder() : RAVEBase(){
+//     this->ugen_outputs = in0(filename_length+1);
+//     if (!load_thread) make_buffers();
+//     mCalcFunc = make_calc_function<RAVEEncoder, &RAVEEncoder::next>();
+// }
 
-void RAVEDecoder::make_buffers(){
-    inBuffer = (float*)RTAlloc(this->mWorld, model->latent_size * sizeof(float));
-    outBuffer = (float*)RTAlloc(this->mWorld, model->block_size * sizeof(float));
-    std::cout << 
-        "RAVEDecoder latent size: " << model->latent_size << 
-        "; found " << ugen_inputs << " inputs" << std::endl;
-}
+// void RAVEDecoder::make_buffers(){
+//     inBuffer = (float*)RTAlloc(this->mWorld, model.latent_size * sizeof(float));
+//     outBuffer = (float*)RTAlloc(this->mWorld, model.block_size * sizeof(float));
+//     std::cout << 
+//         "RAVEDecoder latent size: " << model.latent_size << 
+//         "; found " << ugen_inputs << " inputs" << std::endl;
+// }
 
-RAVEDecoder::RAVEDecoder() : RAVEBase(){
-    // number of inputs provided in synthdef
-    // filename len, *chars, inputs len, *inputs
-    this->ugen_inputs = in0(filename_length+1);
-    this->ugen_outputs = 1;
-    if (!load_thread) make_buffers();
-    mCalcFunc = make_calc_function<RAVEDecoder, &RAVEDecoder::next>();
-}
+// RAVEDecoder::RAVEDecoder() : RAVEBase(){
+//     // number of inputs provided in synthdef
+//     // filename len, *chars, inputs len, *inputs
+//     this->ugen_inputs = in0(filename_length+1);
+//     this->ugen_outputs = 1;
+//     if (!load_thread) make_buffers();
+//     mCalcFunc = make_calc_function<RAVEDecoder, &RAVEDecoder::next>();
+// }
 
-void RAVE::next(int nSamples) {
-    const float* input = in(filename_length+1);
-    const float use_prior = in0(filename_length+2);
-    const float temperature = in0(filename_length+3);
+// void RAVE::next(int nSamples) {
+//     const float* input = in(filename_length+1);
+//     const float use_prior = in0(filename_length+2);
+//     const float temperature = in0(filename_length+3);
 
-    float* output = out(0);
+//     float* output = out(0);
 
-    if (!model->loaded){
-        for (int i = 0; i < nSamples; ++i) {
-            write_zeros_ar(i);
-        }
-        return;
-    }
-    else if (load_thread && load_thread->joinable()){
-        load_thread->join();
-        make_buffers();
-    }
+//     if (!model.loaded){
+//         for (int i = 0; i < nSamples; ++i) {
+//             write_zeros_ar(i);
+//         }
+//         return;
+//     }
+//     else if (load_thread && load_thread->joinable()){
+//         load_thread->join();
+//         make_buffers();
+//     }
 
-    int model_block = model->block_size;
-    int host_block = nSamples;
+//     int model_block = model.block_size;
+//     int host_block = nSamples;
 
-    // assume model_block and host_block are powers of two
-    // handle case when model_block > host_block and the reverse
-    int io_blocks = ceil(float(host_block) / model_block);
-    int min_block = std::min(model_block, host_block);
+//     // assume model_block and host_block are powers of two
+//     // handle case when model_block > host_block and the reverse
+//     int io_blocks = ceil(float(host_block) / model_block);
+//     int min_block = std::min(model_block, host_block);
 
-    int hostInIdx = 0;
-    int hostOutIdx = 0;
+//     int hostInIdx = 0;
+//     int hostOutIdx = 0;
 
-    for (int block = 0; block < io_blocks; ++block){
+//     for (int block = 0; block < io_blocks; ++block){
 
-        for (int i = 0; i < min_block; ++i) {
-            inBuffer[inIdx] = input[hostInIdx];
-            hostInIdx++;
-            inIdx++;
-            if(inIdx == model_block){
-                //process block
-                if(use_prior && model->prior_temp_size>0){
-                    model->prior_decode(temperature, outBuffer);
-                } else {
-                    model->encode_decode(inBuffer, outBuffer);
-                }                
-                outIdx = inIdx = 0;
-                first_block_done = true;
-            }
-        }
+//         for (int i = 0; i < min_block; ++i) {
+//             inBuffer[inIdx] = input[hostInIdx];
+//             hostInIdx++;
+//             inIdx++;
+//             if(inIdx == model_block){
+//                 //process block
+//                 if(use_prior && model.prior_temp_size>0){
+//                     model.prior_decode(temperature, outBuffer);
+//                 } else {
+//                     model.encode_decode(inBuffer, outBuffer);
+//                 }                
+//                 outIdx = inIdx = 0;
+//                 first_block_done = true;
+//             }
+//         }
 
-        for (int i = 0; i < min_block; ++i) {
-            if (first_block_done){
-                if (outIdx >= model_block) {
-                    std::cout<<"indexing error"<<std::endl;
-                    outIdx = 0;
-                }
-                output[hostOutIdx] = outBuffer[outIdx];
-                outIdx++;
-                hostOutIdx++;
-            }
-            else {
-                write_zeros_ar(i);
-            }
-        }
-    }
-}
+//         for (int i = 0; i < min_block; ++i) {
+//             if (first_block_done){
+//                 if (outIdx >= model_block) {
+//                     std::cout<<"indexing error"<<std::endl;
+//                     outIdx = 0;
+//                 }
+//                 output[hostOutIdx] = outBuffer[outIdx];
+//                 outIdx++;
+//                 hostOutIdx++;
+//             }
+//             else {
+//                 write_zeros_ar(i);
+//             }
+//         }
+//     }
+// }
 
-void RAVEPrior::next(int nSamples) {
-    const float temperature = in0(filename_length+2);
+// void RAVEPrior::next(int nSamples) {
+//     const float temperature = in0(filename_length+2);
 
-    if (!model->loaded){
-        write_zeros_kr();
-        return;
-    }
-    else if (load_thread && load_thread->joinable()){
-        load_thread->join();
-        make_buffers();
-    }
+//     if (!model.loaded){
+//         write_zeros_kr();
+//         return;
+//     }
+//     else if (load_thread && load_thread->joinable()){
+//         load_thread->join();
+//         make_buffers();
+//     }
 
-    if (model->prior_temp_size<=0) {
-        write_zeros_kr();
-        return;
-    }
+//     if (model.prior_temp_size<=0) {
+//         write_zeros_kr();
+//         return;
+//     }
 
-    int model_block = model->block_size;
-    int host_block = fullBufferSize();
+//     int model_block = model.block_size;
+//     int host_block = fullBufferSize();
 
-    for (int i=0; i<host_block; ++i) {
-        // just count samples, there is no audio input
-        if(outIdx == 0){
-            //process block
-            model->prior(temperature, outBuffer);
-            first_block_done = true;
-        }
-        outIdx++;
-        if(outIdx == model_block){
-            outIdx = 0;
-        }
-    }
+//     for (int i=0; i<host_block; ++i) {
+//         // just count samples, there is no audio input
+//         if(outIdx == 0){
+//             //process block
+//             model.prior(temperature, outBuffer);
+//             first_block_done = true;
+//         }
+//         outIdx++;
+//         if(outIdx == model_block){
+//             outIdx = 0;
+//         }
+//     }
 
-    // write results to N kr outputs once per block
-    if (first_block_done){
-        for (int j=0; j<std::min(model->latent_size, this->ugen_outputs); ++j){
-            out0(j) = outBuffer[j];
-        }
-    }
-    else {
-        write_zeros_kr();
-    }
-}
+//     // write results to N kr outputs once per block
+//     if (first_block_done){
+//         for (int j=0; j<std::min(model.latent_size, this->ugen_outputs); ++j){
+//             out0(j) = outBuffer[j];
+//         }
+//     }
+//     else {
+//         write_zeros_kr();
+//     }
+// }
 
-void RAVEEncoder::next(int nSamples) {
-    const float* input = in(filename_length+2);
+// void RAVEEncoder::next(int nSamples) {
+//     const float* input = in(filename_length+2);
 
-    if (!model->loaded) {
-        write_zeros_kr();
-        return;
-    }
-    else if (load_thread && load_thread->joinable()){
-        load_thread->join();
-        make_buffers();
-    }
+//     if (!model.loaded) {
+//         write_zeros_kr();
+//         return;
+//     }
+//     else if (load_thread && load_thread->joinable()){
+//         load_thread->join();
+//         make_buffers();
+//     }
 
-    int model_block = model->block_size;
-    int host_block = fullBufferSize();
-     // assume model_block and host_block are powers of two
-    // handle case when model_block > host_block and the reverse
-    int io_blocks = ceil(float(host_block) / model_block);
-    int min_block = std::min(model_block, host_block);
+//     int model_block = model.block_size;
+//     int host_block = fullBufferSize();
+//      // assume model_block and host_block are powers of two
+//     // handle case when model_block > host_block and the reverse
+//     int io_blocks = ceil(float(host_block) / model_block);
+//     int min_block = std::min(model_block, host_block);
 
-    int hostInIdx = 0;
+//     int hostInIdx = 0;
 
-    for (int block = 0; block < io_blocks; ++block){
-        for (int i = 0; i < min_block; ++i) {
-            inBuffer[inIdx] = input[hostInIdx];
-            inIdx++;
-            hostInIdx++;
-            if(inIdx == model_block){
-                //process block
-                model->encode(inBuffer, outBuffer);
+//     for (int block = 0; block < io_blocks; ++block){
+//         for (int i = 0; i < min_block; ++i) {
+//             inBuffer[inIdx] = input[hostInIdx];
+//             inIdx++;
+//             hostInIdx++;
+//             if(inIdx == model_block){
+//                 //process block
+//                 model.encode(inBuffer, outBuffer);
 
-                inIdx = 0;
-                first_block_done = true;
-            }
-        }
-    }
+//                 inIdx = 0;
+//                 first_block_done = true;
+//             }
+//         }
+//     }
 
-    // write results to N kr outputs once per block
-    if (first_block_done){
-        for (int j=0; j < std::min(model->latent_size, this->ugen_outputs); ++j){
-            out0(j) = outBuffer[j];
-        }
-    }
-    else {
-        write_zeros_kr();
-    }
-}
+//     // write results to N kr outputs once per block
+//     if (first_block_done){
+//         for (int j=0; j < std::min(model.latent_size, this->ugen_outputs); ++j){
+//             out0(j) = outBuffer[j];
+//         }
+//     }
+//     else {
+//         write_zeros_kr();
+//     }
+// }
 
-void RAVEDecoder::next(int nSamples) {
-    float* output = out(0);
+// void RAVEDecoder::next(int nSamples) {
+//     float* output = out(0);
 
-    if (!model->loaded){
-        for (int i = 0; i < nSamples; ++i) {
-            write_zeros_ar(i);
-        }
-        return;
-    }
-    else if (load_thread && load_thread->joinable()){
-        load_thread->join();
-        make_buffers();
-    }
+//     if (!model.loaded){
+//         for (int i = 0; i < nSamples; ++i) {
+//             write_zeros_ar(i);
+//         }
+//         return;
+//     }
+//     else if (load_thread && load_thread->joinable()){
+//         load_thread->join();
+//         make_buffers();
+//     }
 
-    // read control-rate inputs once per frame
-    int first_input = filename_length + 2;
-    for (int j=0; j < model->latent_size; ++j){
-        if (j<this->ugen_inputs){
-            inBuffer[j] = in0(j + first_input);
-        } else{
-            inBuffer[j] = 0;
-        }
-    }
+//     // read control-rate inputs once per frame
+//     int first_input = filename_length + 2;
+//     for (int j=0; j < model.latent_size; ++j){
+//         if (j<this->ugen_inputs){
+//             inBuffer[j] = in0(j + first_input);
+//         } else{
+//             inBuffer[j] = 0;
+//         }
+//     }
 
-    int model_block = model->block_size;
-    int host_block = nSamples;
+//     int model_block = model.block_size;
+//     int host_block = nSamples;
 
-    int hostOutIdx = 0;
+//     int hostOutIdx = 0;
 
-    for (int i = 0; i < host_block; ++i) {
-        if (outIdx==0) {
-            model->decode(inBuffer, outBuffer);
-        }
-        output[hostOutIdx] = outBuffer[outIdx];
-        hostOutIdx++;
-        outIdx++;
-        if (outIdx == model_block){
-            outIdx = 0;
-        }
-    }
-}
+//     for (int i = 0; i < host_block; ++i) {
+//         if (outIdx==0) {
+//             model.decode(inBuffer, outBuffer);
+//         }
+//         output[hostOutIdx] = outBuffer[outIdx];
+//         hostOutIdx++;
+//         outIdx++;
+//         if (outIdx == model_block){
+//             outIdx = 0;
+//         }
+//     }
+// }
 
 } // namespace RAVE
 
 PluginLoad(RAVEUGens) {
     // Plugin magic
     ft = inTable;
-    registerUnit<RAVE::AsyncRAVE>(ft, "RAVE", false);
-    registerUnit<RAVE::AsyncRAVEEncoder>(ft, "RAVEEncoder", false);
-    registerUnit<RAVE::AsyncRAVEDecoder>(ft, "RAVEDecoder", false);
-    registerUnit<RAVE::AsyncRAVEPrior>(ft, "RAVEPrior", false);
+    registerUnit<RAVE::TestDummy>(ft, "RAVE", false);
+
+    // registerUnit<RAVE::AsyncRAVE>(ft, "RAVE", false);
+    // registerUnit<RAVE::AsyncRAVEEncoder>(ft, "RAVEEncoder", false);
+    // registerUnit<RAVE::AsyncRAVEDecoder>(ft, "RAVEDecoder", false);
+    // registerUnit<RAVE::AsyncRAVEPrior>(ft, "RAVEPrior", false);
 
     // registerUnit<RAVE::RAVE>(ft, "RAVE", false);
     // registerUnit<RAVE::RAVEPrior>(ft, "RAVEPrior", false);
