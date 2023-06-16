@@ -350,13 +350,16 @@ public:
     std::unique_ptr<std::thread> compute_thread;
 };
 
-class AsyncRAVEBase : public RAVEBase {
+template <typename DerivedT>
+class AsyncRAVEBase: public RAVEBase {
 public:
     float delay; // estimated total delay in seconds
     std::unique_ptr<Resampler> res_in;
     std::unique_ptr<Resampler> res_out;
     long m_internal_samples; // count of total samples processed
     int m_processing_latency; // in model samples
+
+    auto derivedThis() { return static_cast<DerivedT*>(this); }
 
     AsyncRAVEBase();
     ~AsyncRAVEBase();
@@ -367,7 +370,7 @@ public:
     // virtual void next(int nSamples) = 0;
     // start the next block of processing
     // and read control rate inputs
-    void dispatch() {std::cout<<"abstract dispatch"<<std::endl;} 
+    void dispatch() {std::cout<<"ERROR: 'abstract' dispatch"<<std::endl;} 
     // finish the last block of processing
     // and write control rate outputs
     void join(); 
@@ -383,7 +386,7 @@ public:
     float step(float x){write(x); return read();}
 };
 
-class AsyncRAVE : public AsyncRAVEBase {
+class AsyncRAVE : public AsyncRAVEBase<AsyncRAVE> {
 public:
     AsyncRAVE();
     const bool audio_in = true;
@@ -393,7 +396,7 @@ public:
     // void join(); 
 };
 
-class AsyncRAVEEncoder : public AsyncRAVEBase {
+class AsyncRAVEEncoder : public AsyncRAVEBase<AsyncRAVEEncoder> {
 public:
     AsyncRAVEEncoder();
     const bool audio_in = true;
@@ -404,7 +407,7 @@ public:
     void join(); 
 };
 
-class AsyncRAVEDecoder : public AsyncRAVEBase {
+class AsyncRAVEDecoder : public AsyncRAVEBase<AsyncRAVEEncoder> {
 public:
     AsyncRAVEDecoder();
     const bool audio_in = false;
@@ -414,7 +417,7 @@ public:
     // void join(); 
 };
 
-class AsyncRAVEPrior : public AsyncRAVEBase {
+class AsyncRAVEPrior : public AsyncRAVEBase<AsyncRAVEEncoder> {
 public:
     AsyncRAVEPrior();
     const bool audio_in = false;
@@ -452,3 +455,23 @@ public:
 
 
 } // namespace RAVE
+
+
+// above uses: CRTP dispatch for polymorphism
+// https://en.wikipedia.org/wiki/Curiously_recurring_template_pattern
+
+// template <typename DerivedT>
+// class Base
+// {
+//     auto derivedThis() { return static_cast<DerivedT*>(this); }
+//     void polymorphic() {
+//         derivedThis()->derivedMethod()
+//     }
+// }
+
+// class Derived : public Base<Derived> {
+//     void derivedMethod();
+// }
+
+
+// TODO: AsyncRAVEDecoder seems broken

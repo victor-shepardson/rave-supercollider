@@ -58,7 +58,8 @@ void RAVEBase::write_zeros_ar(int i) {
     }
 }
 
-AsyncRAVEBase::AsyncRAVEBase() : RAVEBase() {
+template <typename DerivedT>
+AsyncRAVEBase<DerivedT>::AsyncRAVEBase() : RAVEBase() {
     // std::cout<<"AsyncRAVEBase abort"<<std::endl;return; //DEBUG
 
     // TODO: expose processing latency to user
@@ -68,13 +69,15 @@ AsyncRAVEBase::AsyncRAVEBase() : RAVEBase() {
     m_internal_samples = 0;
 }
 
-AsyncRAVEBase::~AsyncRAVEBase() {
+template <typename DerivedT>
+AsyncRAVEBase<DerivedT>::~AsyncRAVEBase() {
     //TODO: Dtor inheritance?
     RTFree(mWorld, modelInBuffer);
     RTFree(mWorld, modelOutBuffer);
 }
 
-void AsyncRAVEBase::make_buffers(){
+template <typename DerivedT>
+void AsyncRAVEBase<DerivedT>::make_buffers(){
     std::cout << "additional init after model load..." << std::endl;
     // return;//DEBUG
 
@@ -131,7 +134,9 @@ void AsyncRAVEBase::make_buffers(){
      std::cout << "UGen init finished" << std::endl;
 }
 
-void AsyncRAVEBase::write(float x){
+
+template <typename DerivedT>
+void AsyncRAVEBase<DerivedT>::write(float x){
     // if there is no audio in,
     // still use a dummy resampler to count model blocks
 
@@ -147,13 +152,14 @@ void AsyncRAVEBase::write(float x){
         inIdx += 1;
         m_internal_samples += 1;
         if (inIdx == model.block_size){
-            dispatch();
+            derivedThis()->dispatch();
             inIdx = 0;
         }
     }
 }
 
-float AsyncRAVEBase::read(){
+template <typename DerivedT>
+float AsyncRAVEBase<DerivedT>::read(){
     float x = 0;
     // until an output sample is ready, process model samples
     while (!res_out->pending()){
@@ -161,7 +167,7 @@ float AsyncRAVEBase::read(){
         // plus processing time has elapsed
         if (m_internal_samples >= model.block_size + m_processing_latency){
             if (outIdx % model.block_size == 0){
-                join();
+                derivedThis()->join();
                 outIdx = 0;
             }
             if(audio_out) x = outBuffer[outIdx];
@@ -175,7 +181,8 @@ float AsyncRAVEBase::read(){
 }
 
 // same for AsyncRAVE and AsyncRAVEDecoder
-void AsyncRAVEBase::join(){
+template <typename DerivedT>
+void AsyncRAVEBase<DerivedT>::join(){
     // join model thread
     std::cout << "join" << std::endl;
     if (!compute_thread) 
