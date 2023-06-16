@@ -36,7 +36,7 @@ RAVEBase::RAVEBase() {
 
 RAVEBase::~RAVEBase() {
     if (load_thread && load_thread->joinable()) {
-        compute_thread->join();
+        load_thread->join();
     }
     if (compute_thread && compute_thread->joinable()) {
         compute_thread->join();
