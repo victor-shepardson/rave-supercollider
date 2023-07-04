@@ -347,9 +347,6 @@ void AsyncRAVEDecoder::next(int nSamples) {
 }
 
 void AsyncRAVEDecoder::dispatch(){
-    const float use_prior = in0(filename_length+2);
-    const float temperature = in0(filename_length+3);
-
     // std::cout << "dispatch" << std::endl;
 
     if (compute_thread && compute_thread->joinable()) 

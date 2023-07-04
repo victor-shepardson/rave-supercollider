@@ -49,7 +49,7 @@ struct RAVEModel {
         // block_size = 2048; latent_size = 16; sr = 48000; return; //DEBUG
         try {
             c10::InferenceMode guard;
-            this->model = torch::jit::load(rave_model_file);
+            model = torch::jit::load(rave_model_file);
             std::cout << "model loaded" <<std::endl;
         }
         catch (const c10::Error& e) {
@@ -61,13 +61,13 @@ struct RAVEModel {
         }
 
         // support for Neutone models
-        if (this->model.hasattr("model")){
-            this->model = this->model.attr("model").toModule();
+        if (model.hasattr("model")){
+            model = model.attr("model").toModule();
         }
 
-        this->z_per_second = this->block_size = this->latent_size = this->sr = this->prior_temp_size = -1;
+        z_per_second = block_size = latent_size = sr = prior_temp_size = -1;
 
-        auto named_buffers = this->model.named_buffers();
+        auto named_buffers = model.named_buffers();
         for (auto const& i: named_buffers) {
             // std::cout<<i.name<<std::endl;
 
@@ -82,8 +82,8 @@ struct RAVEModel {
                 ) {
                 // std::cout<<i.name<<std::endl;
                 // std::cout << i.value << std::endl;
-                this->block_size = i.value[1].item<int>();
-                this->latent_size = i.value[0].item<int>();
+                block_size = i.value[1].item<int>();
+                latent_size = i.value[0].item<int>();
             }
             if (
                 (i.name == "_rave.sampling_rate") 
@@ -91,16 +91,16 @@ struct RAVEModel {
                 ) {
                 // std::cout<<i.name<<std::endl;
                 // std::cout << i.value << std::endl;
-                this->sr = i.value.item<int>();
+                sr = i.value.item<int>();
             }
             if (i.name == "_prior.previous_step" || i.name == "last_z") {
                 // std::cout<<i.name<<std::endl;
                 std::cout << i.value.sizes()[1] << std::endl;
-                this->prior_temp_size = (int) i.value.sizes()[1];
+                prior_temp_size = (int) i.value.sizes()[1];
             }
         } 
 
-        if ((this->block_size<0) || (this->latent_size<0)){
+        if ((block_size<0) || (latent_size<0)){
             std::cout << "model load failed" << std::endl;
             return;
         }
@@ -110,12 +110,12 @@ struct RAVEModel {
             << std::endl;
         }
 
-        std::cout << "\tblock size: " << this->block_size << std::endl;
-        std::cout << "\tlatent size: " << this->latent_size << std::endl;
+        std::cout << "\tblock size: " << block_size << std::endl;
+        std::cout << "\tlatent size: " << latent_size << std::endl;
 
-        if (this->sr > 0){
-            this->z_per_second = this->sr / this->block_size;
-            std::cout << "\tsample rate: " << this->sr << std::endl;
+        if (sr > 0){
+            z_per_second = sr / block_size;
+            std::cout << "\tsample rate: " << sr << std::endl;
         }
 
         c10::InferenceMode guard;
@@ -123,20 +123,20 @@ struct RAVEModel {
         inputs_rave.push_back(torch::ones({1,1,block_size}));
 
         //warmup
-        this->model(inputs_rave);
+        model(inputs_rave);
 
-        this->loaded = true;
+        loaded = true;
     }
 
     void prior_decode(const float temperature, float* outBuffer) {
         c10::InferenceMode guard;
 
         inputs_rave[0] = torch::ones({1, 1, 1}) * temperature;
-        const auto prior = this->model.get_method("prior")(
+        const auto prior = model.get_method("prior")(
             inputs_rave).toTensor();
 
         inputs_rave[0] = prior;
-        const auto y = this->model.get_method("decode")(
+        const auto y = model.get_method("decode")(
             inputs_rave).toTensor().contiguous();
 
         auto data = y.data_ptr<float>();
@@ -152,7 +152,7 @@ struct RAVEModel {
         inputs_rave[0] = torch::from_blob(inBuffer, block_size)
             .reshape({1, 1, block_size});
 
-        const auto result = this->model(inputs_rave).toTensor();
+        const auto result = model(inputs_rave).toTensor();
 
         auto data = result.data_ptr<float>();
         for (int i=0; i<block_size; ++i){
@@ -166,7 +166,7 @@ struct RAVEModel {
         c10::InferenceMode guard;
 
         inputs_rave[0] = torch::ones({1, 1, 1}) * temperature;
-        const auto z = this->model.get_method("prior")(
+        const auto z = model.get_method("prior")(
             inputs_rave).toTensor();
 
         auto data = z.data_ptr<float>();
@@ -179,10 +179,10 @@ struct RAVEModel {
         c10::InferenceMode guard;
 
         inputs_rave[0] = torch::from_blob(
-        input, block_size).reshape({1, 1, block_size});
+            input, block_size).reshape({1, 1, block_size});
 
-        const auto z = this->model.get_method("encode")(
-        inputs_rave).toTensor();
+        const auto z = model.get_method("encode")(
+            inputs_rave).toTensor();
 
         auto data = z.data_ptr<float>();
         for (int i=0; i<latent_size; i++){
@@ -196,8 +196,8 @@ struct RAVEModel {
         inputs_rave[0] = torch::from_blob(
             latent, latent_size).reshape({1, latent_size, 1});
 
-        const auto y = this->model.get_method("decode")(
-        inputs_rave).toTensor();
+        const auto y = model.get_method("decode")(
+            inputs_rave).toTensor();
 
         auto data = y.data_ptr<float>();
         for (int i=0; i<block_size; i++){
@@ -367,7 +367,6 @@ public:
     // override these
     const bool audio_in = true;
     const bool audio_out = true;
-    // virtual void next(int nSamples) = 0;
     // start the next block of processing
     // and read control rate inputs
     void dispatch() {std::cout<<"ERROR: 'abstract' dispatch"<<std::endl;} 
@@ -401,13 +400,12 @@ public:
     AsyncRAVEEncoder();
     const bool audio_in = true;
     const bool audio_out = false;
-    const int audio_in_idx = 2;
     void next(int nSamples);
     void dispatch(); 
     void join(); 
 };
 
-class AsyncRAVEDecoder : public AsyncRAVEBase<AsyncRAVEEncoder> {
+class AsyncRAVEDecoder : public AsyncRAVEBase<AsyncRAVEDecoder> {
 public:
     AsyncRAVEDecoder();
     const bool audio_in = false;
@@ -417,7 +415,7 @@ public:
     // void join(); 
 };
 
-class AsyncRAVEPrior : public AsyncRAVEBase<AsyncRAVEEncoder> {
+class AsyncRAVEPrior : public AsyncRAVEBase<AsyncRAVEPrior> {
 public:
     AsyncRAVEPrior();
     const bool audio_in = false;
