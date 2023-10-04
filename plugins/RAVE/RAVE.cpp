@@ -364,10 +364,6 @@ void AsyncRAVEDecoder::dispatch(){
     for (int j=0; j < model.latent_size; ++j){
         if (j<ugen_inputs){
             inBuffer[j] = in0(j + first_input);
-
-            ///////
-            std::cout<< j << ": " << inBuffer[j] <<std::endl;
-            ///////
         } else{
             inBuffer[j] = 0;
         }
