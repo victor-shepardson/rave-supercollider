@@ -21,7 +21,7 @@ RAVEBase::RAVEBase() {
     first_block_done = false;
 
     filename_length = in0(0);
-    std::cout<<filename_length<<std::endl;
+    // std::cout<<filename_length<<std::endl;
     // char path[filename_length];
     auto path = std::string(filename_length, '!');
     for (int i=0; i<filename_length; i++){
@@ -98,7 +98,7 @@ void AsyncRAVEBase<DerivedT>::make_buffers(){
 
     auto sr = mWorld->mFullRate.mSampleRate;
        
-    if (audio_in){
+    if (derivedThis()->audio_in){
         // res_in = Resampler(sr, model.sr, 3);
         res_in = std::make_unique<Resampler>(sr, model.sr, 3);
         delay += res_in->delay;
@@ -108,10 +108,10 @@ void AsyncRAVEBase<DerivedT>::make_buffers(){
         // res_in = Resampler(sr, model.sr, 0);
         res_in = std::make_unique<Resampler>(sr, model.sr, 0);
         // start processing immediately
-        inIdx = model.block_size - 1;
+        // inIdx = model.block_size - 1;
     }
 
-    if (audio_out){
+    if (derivedThis()->audio_out){
         // res_out = Resampler(model.sr, sr, 3);
         res_out = std::make_unique<Resampler>(model.sr, sr, 3);
         delay += res_out->delay;
@@ -139,6 +139,9 @@ template <typename DerivedT>
 void AsyncRAVEBase<DerivedT>::write(float x){
     // if there is no audio in,
     // still use a dummy resampler to count model blocks
+    // this will cause Decoder to wait a block before decoding,
+    // but since it still grabs the latest control inputs at time of dispatch,
+    // won't add extra latency to the decoder.
 
     // write to the resampler
     // std::cout << "write to res_in" << std::endl;
@@ -148,7 +151,9 @@ void AsyncRAVEBase<DerivedT>::write(float x){
     while(res_in->pending()){
         // std::cout << "read from res_in" << std::endl;
         auto x = res_in->read();
-        if(audio_in) inBuffer[inIdx] = x;
+        if (derivedThis()->audio_in){
+            inBuffer[inIdx] = x;
+        }
         inIdx += 1;
         m_internal_samples += 1;
         if (inIdx == model.block_size){
@@ -170,7 +175,7 @@ float AsyncRAVEBase<DerivedT>::read(){
                 derivedThis()->join();
                 outIdx = 0;
             }
-            if(audio_out) x = outBuffer[outIdx];
+            if(derivedThis()->audio_out) x = outBuffer[outIdx];
             outIdx += 1;
         }    
         // std::cout << "write to res_out" << std::endl;
@@ -352,13 +357,17 @@ void AsyncRAVEDecoder::dispatch(){
     if (compute_thread && compute_thread->joinable()) 
         std::cout << "ERROR: trying to start compute_thread before previous one is finished" << std::endl;
 
-    // assumption: n_latent <= block_size
+    // assumption: RAVE n_latent <= block_size
 
     // read control rate latents
     int first_input = filename_length + 2;
     for (int j=0; j < model.latent_size; ++j){
         if (j<ugen_inputs){
             inBuffer[j] = in0(j + first_input);
+
+            ///////
+            std::cout<< j << ": " << inBuffer[j] <<std::endl;
+            ///////
         } else{
             inBuffer[j] = 0;
         }

@@ -198,8 +198,19 @@ struct RAVEModel {
     void decode(float* latent, float* outBuffer) {
         c10::InferenceMode guard;
 
+        ///////
+        for (int j=0; j<latent_size; ++j)
+            std::cout<< j << " latent: " << latent[j] <<std::endl;
+        ////////
+
         inputs_rave[0] = torch::from_blob(
             latent, latent_size).reshape({1, latent_size, 1});
+
+        ///////
+        // auto acc = inputs_rave[0].toTensor().accessor<float, 3>();
+        // for (int j=0; j<latent_size; ++j)
+        //     std::cout<< j << " input: " << acc[0][j][0] <<std::endl;
+        ////////
 
         const auto y = model.get_method("decode")(
             inputs_rave).toTensor();
