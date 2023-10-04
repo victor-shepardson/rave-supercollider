@@ -67,6 +67,11 @@ struct RAVEModel {
 
         z_per_second = block_size = latent_size = sr = prior_temp_size = -1;
 
+        // RAVE v2+ has sr as an attr instead of sampling_rate as a buffer
+        if (model.hasattr("sr")){
+            sr = model.attr("sr").toInt();
+        }
+
         auto named_buffers = model.named_buffers();
         for (auto const& i: named_buffers) {
             // std::cout<<i.name<<std::endl;

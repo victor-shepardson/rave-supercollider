@@ -184,7 +184,7 @@ float AsyncRAVEBase<DerivedT>::read(){
 template <typename DerivedT>
 void AsyncRAVEBase<DerivedT>::join(){
     // join model thread
-    std::cout << "join" << std::endl;
+    // std::cout << "join" << std::endl;
     if (!compute_thread) 
         std::cout << "ERROR: no compute thread" << std::endl;
     if (!compute_thread->joinable()) 
@@ -238,7 +238,7 @@ void AsyncRAVE::dispatch(){
     const float use_prior = 0;//in0(filename_length+2);
     const float temperature = 0;//in0(filename_length+3);
 
-    std::cout << "dispatch" << std::endl;
+    // std::cout << "dispatch" << std::endl;
 
     if (compute_thread && compute_thread->joinable()) 
         std::cout << "ERROR: trying to start compute_thread before previous one is finished" << std::endl;
